@@ -1,0 +1,14 @@
+name:       toml
+version:    0.0.0
+cabal-version: >= 1.2
+build-type: Simple
+description:
+    Whiskey-driven YAML replacement.
+
+library
+    hs-source-dirs: src
+    build-depends:
+        base >= 4 && < 5
+
+    exposed-modules:
+        Text.TOML
