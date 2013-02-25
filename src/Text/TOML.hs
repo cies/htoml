@@ -35,7 +35,6 @@ process ts = go (group ts) tempty
     insertMany kvs m = foldl' (flip $ uncurry tinsert) m kvs'
       where kvs' = [(B.unpack k, Right v) | (k, v) <- kvs]
 
-
 -- NB: groupBy will never produce an empty group.
 group ts = alternate $ (map omg) $ (groupBy right ts)
   where 
@@ -45,14 +44,14 @@ group ts = alternate $ (map omg) $ (groupBy right ts)
     right (Right _) (Right _) = True
     right _         _         = False
 
--- If the token list starts with a Right, then there are key-value pairs that
--- don't belong to a keygroup. Assign that one the 'empty' keygroup, and match
--- pairs. If the token list starts with a right, then there are no "global"
--- key-value pairs, and it's ok to straight zip the partition.
---
-alternate                          []  = []
-alternate ((Left l)              : []) = (l , []) : []
-alternate ((Right r)             : gs) = ([], r ) : (alternate gs)
-alternate ((Left l ) : (Right r) : gs) = (l , r ) : (alternate gs)
-alternate ((Left l1) : (Left l2) : gs) = (l1, []) : (alternate $ (Left l2) : gs)
+    -- If the token list starts with a Right, then there are key-value pairs that
+    -- don't belong to a keygroup. Assign that one the 'empty' keygroup, and match
+    -- pairs. If the token list starts with a right, then there are no "global"
+    -- key-value pairs, and it's ok to straight zip the partition.
+    --
+    alternate                          []  = []
+    alternate ((Left l)              : []) = (l , []) : []
+    alternate ((Right r)             : gs) = ([], r ) : (alternate gs)
+    alternate ((Left l ) : (Right r) : gs) = (l , r ) : (alternate gs)
+    alternate ((Left l1) : (Left l2) : gs) = (l1, []) : (alternate $ (Left l2) : gs)
 
