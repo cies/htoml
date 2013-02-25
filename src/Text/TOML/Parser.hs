@@ -11,7 +11,7 @@ import Text.TOML.Value
 
 document = comment
 
-value = array <|> bool <|> str <|> num -- <|> number <|> date
+value = array <|> bool <|> str <|> num -- <|> date
   where
     array = VArray <$> between lbrace rbrace (value `sepBy` comma)
     bool  = VBool <$> (true *> return True <|> false *> return False)
