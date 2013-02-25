@@ -4,7 +4,7 @@ module Text.TOML where
 import qualified Data.Attoparsec.ByteString.Char8 as A
 import qualified Data.ByteString.Char8 as B
 import Data.List ( foldl', groupBy )
-import Data.Either ( partitionEithers, either, rights )
+import Data.Either ( rights )
 import Data.Map ( Map )
 import qualified Data.Map as M
 
