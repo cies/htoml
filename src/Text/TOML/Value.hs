@@ -1,12 +1,20 @@
 module Text.TOML.Value
   ( TOML (..)
   , TOMLV (..)
+  , Value
+  , tempty
+  , tinsert
+  , liftT
+  , liftTV
   )where
 
 import Data.Map ( Map )
+import qualified Data.Map as M
 
 
-newtype TOML = TOML (Map String (Either TOML TOMLV))
+type Value = Either TOML TOMLV
+
+newtype TOML = TOML (Map String Value)
     deriving ( Eq, Ord, Show )
 
 data TOMLV
@@ -19,3 +27,14 @@ data TOMLV
     | VDate -- TODO
     deriving ( Eq, Ord, Show )
 
+tempty = TOML M.empty
+
+liftT :: (Map String Value -> Map String Value) -> TOML -> TOML
+liftT f (TOML m) = (TOML $ f m)
+
+liftTV :: (TOML -> TOML) -> Value -> Value
+liftTV f (Left  t) = Left $ f t
+liftTV f (Right _) = Left $ f tempty
+
+tinsert :: String -> Value -> TOML -> TOML
+tinsert k v t = liftT (M.insert k v) t

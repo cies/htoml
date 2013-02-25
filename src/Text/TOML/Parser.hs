@@ -16,13 +16,13 @@ import Data.Attoparsec.Combinator
 
 import Text.TOML.Value
 
-type Token = Either [B.ByteString] [(B.ByteString, TOMLV)]
+type Token = Either [B.ByteString] (B.ByteString, TOMLV)
 
 document :: Parser [Token]
 document = smb *> many ekk <* endOfInput
   where 
     smb = skipMany blank
-    ekk = (eitherP keygroup (many keyval)) <* smb
+    ekk = (eitherP keygroup keyval) <* smb
 
 keygroup :: Parser [B.ByteString]
 keygroup = do
