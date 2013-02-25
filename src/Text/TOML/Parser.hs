@@ -5,6 +5,7 @@ module Text.TOML.Parser
   , keygroup
   , keyval
   , value
+  , Token
   )where
 
 import Control.Applicative
@@ -15,7 +16,9 @@ import Data.Attoparsec.Combinator
 
 import Text.TOML.Value
 
-document :: Parser [Either [B.ByteString] [(B.ByteString, TOMLV)]]
+type Token = Either [B.ByteString] [(B.ByteString, TOMLV)]
+
+document :: Parser [Token]
 document = smb *> many ekk <* endOfInput
   where 
     smb = skipMany blank
