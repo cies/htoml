@@ -8,7 +8,9 @@ description:
 library
     hs-source-dirs: src
     build-depends:
-        base >= 4 && < 5
+        base >= 4 && < 5,
+        containers >= 0.4 && < 0.5
 
     exposed-modules:
         Text.TOML
+        Text.TOML.Value
