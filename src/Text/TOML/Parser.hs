@@ -13,13 +13,20 @@ document = comment
 
 value = array <|> bool <|> str -- <|> number <|> date
   where
-    array = VArray <$> between (string "[") (string "]") (value `sepBy` (string ","))
-    bool  = VBool <$> (string "true" *> return True <|> string "false" *> return False)
-    str = VString <$> between (string "\"") (string "\"") (many (notChar '"'))
+    array = VArray <$> between lbrace rbrace (value `sepBy` comma)
+    bool  = VBool <$> (true *> return True <|> false *> return False)
+    str = VString <$> between quote quote (many (notChar '"'))
 
 whatever p = p >> return ()
-
-space   = whatever $ char ' ' <|> char '\t'
+lexeme p = do { many (many1 spc); p }
+spc   = whatever $ char ' ' <|> char '\t'
 comment = whatever $ char '#' *> takeTill (=='\n')
+
+quote = lexeme $ string "\""
+lbrace = lexeme $ string "["
+rbrace = lexeme $ string "]"
+comma = lexeme $ string ","
+true = lexeme $ string "true"
+false = lexeme $ string "false"
 
 between a b p = do { a; e <- p; b; return e }
