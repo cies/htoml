@@ -12,8 +12,6 @@ import Text.TOML.Parser
 import Text.TOML.Value
 
 
-type KeyGroup = ([B.ByteString], [(B.ByteString, TOMLV)])
-
 parse :: B.ByteString -> Maybe TOML
 parse bs = process `fmap` parse' bs
 
