@@ -11,15 +11,15 @@ import Text.TOML.Value
 
 document = comment
 
-value = array <|> bool <|> number -- <|> date
+value = array <|> bool <|> str -- <|> number <|> date
   where
-    array = VArray <$> between "[" "]" (value `sepBy` (string ","))
+    array = VArray <$> between (string "[") (string "]") (value `sepBy` (string ","))
     bool  = VBool <$> (string "true" *> return True <|> string "false" *> return False)
-    string = between "\"" "\"" (notChar '"')
+    str = VString <$> between (string "\"") (string "\"") (many (notChar '"'))
 
 whatever p = p >> return ()
 
 space   = whatever $ char ' ' <|> char '\t'
 comment = whatever $ char '#' *> takeTill (=='\n')
 
-between a b p = do { string a; e <- p; string b; return e }
+between a b p = do { a; e <- p; b; return e }
