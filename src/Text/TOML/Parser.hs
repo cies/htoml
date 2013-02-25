@@ -36,8 +36,8 @@ keyval = do
     v <- equal *> value
     return (k, v)
 
-keyg = lexeme $ takeWhile1 $ notInClass " \n]."
-keyv = lexeme $ takeWhile1 $ notInClass " \n="
+keyg = lexeme $ takeWhile1 $ notInClass " \t\n]."
+keyv = lexeme $ takeWhile1 $ notInClass " \t\n="
 
 value :: Parser TOMLV
 value = (array <?> "array")
