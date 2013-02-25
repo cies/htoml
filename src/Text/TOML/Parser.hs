@@ -11,11 +11,16 @@ import Text.TOML.Value
 
 document = comment
 
-value = array <|> bool <|> str -- <|> number <|> date
+value = array <|> bool <|> str <|> num -- <|> number <|> date
   where
     array = VArray <$> between lbrace rbrace (value `sepBy` comma)
     bool  = VBool <$> (true *> return True <|> false *> return False)
     str = VString <$> between quote quote (many (notChar '"'))
+    num = lexeme $ do
+        n <- number
+        case n of
+            I n -> return $ VInteger n
+            D d -> return $ VDouble d
 
 whatever p = p >> return ()
 lexeme p = do { many (many1 spc); p }
