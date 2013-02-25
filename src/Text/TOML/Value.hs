@@ -4,7 +4,7 @@ import Data.Map ( Map )
 
 
 newtype TOML = TOML (Map String (Either TOML TOMLV))
-    deriving ( Eq, Ord )
+    deriving ( Eq, Ord, Show )
 
 data TOMLV
     = VString String
@@ -14,5 +14,5 @@ data TOMLV
     | VArray [TOMLV]
     | VDocument TOML
     | VDate -- TODO
-    deriving ( Eq, Ord )
+    deriving ( Eq, Ord, Show )
 
