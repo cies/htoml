@@ -1,24 +1,33 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Text.TOML.Parser where
+module Text.TOML.Parser
+  ( module Text.TOML.Value
+  , document
+  , keygroup
+  , keyval
+  , value
+  )where
 
 import Control.Applicative
 
+import qualified Data.ByteString.Char8 as B
 import Data.Attoparsec.ByteString.Char8
 import Data.Attoparsec.Combinator
-import Data.Attoparsec.Types
 
 import Text.TOML.Value
 
+document :: Parser [Either [B.ByteString] [(B.ByteString, TOMLV)]]
 document = smb *> many ekk <* endOfInput
   where 
     smb = skipMany blank
-    ekk = (eitherP keygroup keyval) <* smb
+    ekk = (eitherP keygroup (many keyval)) <* smb
 
+keygroup :: Parser [B.ByteString]
 keygroup = do
     skipMany blank
     between lbrace rbrace skey
   where skey = keyg `sepBy` period
 
+keyval :: Parser (B.ByteString, TOMLV)
 keyval = do
     k <- keyv
     v <- equal *> value
@@ -27,6 +36,7 @@ keyval = do
 keyg = lexeme $ takeWhile1 $ notInClass " \n]."
 keyv = lexeme $ takeWhile1 $ notInClass " \n="
 
+value :: Parser TOMLV
 value = (array <?> "array")
     <|> (bool  <?> "bool")
     <|> (str   <?> "string")

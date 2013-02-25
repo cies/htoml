@@ -1,4 +1,7 @@
-module Text.TOML.Value where
+module Text.TOML.Value
+  ( TOML (..)
+  , TOMLV (..)
+  )where
 
 import Data.Map ( Map )
 
