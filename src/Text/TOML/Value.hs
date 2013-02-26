@@ -10,6 +10,10 @@ module Text.TOML.Value
 
 import Data.Map ( Map )
 import qualified Data.Map as M
+import Data.Time.Clock
+import Data.Time.Format
+
+import System.Locale
 
 
 type Value = Either TOML TOMLV
@@ -24,7 +28,7 @@ data TOMLV
     | VBool Bool
     | VArray [TOMLV]
     | VDocument TOML
-    | VDate -- TODO
+    | VDate UTCTime
     deriving ( Eq, Ord, Show )
 
 tempty = TOML M.empty
