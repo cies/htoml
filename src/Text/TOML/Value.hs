@@ -6,31 +6,30 @@ module Text.TOML.Value
   , tinsert
   , liftT
   , liftTV
-  )where
+  ) where
+
 
 import Data.Map ( Map )
 import qualified Data.Map as M
 import Data.Time.Clock
-import Data.Time.Format
-
-import System.Locale
+import Data.Time.Format()
 
 
 type Value = Either TOML TOMLV
 
 newtype TOML = TOML (Map String Value)
-    deriving ( Eq, Ord, Show )
+  deriving ( Eq, Ord, Show )
 
-data TOMLV
-    = VString String
-    | VInteger Integer
-    | VDouble Double
-    | VBool Bool
-    | VArray [TOMLV]
-    | VDocument TOML
-    | VDate UTCTime
-    deriving ( Eq, Ord, Show )
+data TOMLV = VString String
+           | VInteger Integer
+           | VDouble Double
+           | VBool Bool
+           | VArray [TOMLV]
+           | VDocument TOML
+           | VDate UTCTime
+  deriving ( Eq, Ord, Show )
 
+tempty :: TOML
 tempty = TOML M.empty
 
 liftT :: (Map String Value -> Map String Value) -> TOML -> TOML

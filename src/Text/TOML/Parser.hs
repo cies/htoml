@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Text.TOML.Parser
   ( module Text.TOML.Value
   , document
@@ -6,13 +7,13 @@ module Text.TOML.Parser
   , keyval
   , value
   , Token
-  )where
+  ) where
+
 
 import Control.Applicative
 
 import qualified Data.ByteString.Char8 as B
 import Data.Attoparsec.ByteString.Char8
-import Data.Attoparsec.Combinator
 import Data.Time.Format
 
 import System.Locale
@@ -22,9 +23,10 @@ import Text.TOML.Value
 
 type Token = Either [B.ByteString] (B.ByteString, TOMLV)
 
+
 document :: Parser [Token]
 document = smb *> many ekk <* endOfInput
-  where 
+  where
     smb = skipMany blank
     ekk = (eitherP keygroup keyval) <* smb
 
@@ -66,20 +68,20 @@ value = (array <?> "array")
             Nothing -> fail "parse date failed"
 
 whatever p = p >> return ()
-lexeme p = do { x <- p; many spc; return x }
-spc   = char ' ' <|> char '\t'
-comment = whatever $ char '#' *> takeTill (=='\n')
-line p = p *> (lexeme endOfLine)
-blank = line $ lexeme $ (try comment) <|> return ()
+lexeme p   = do { x <- p; many spc; return x }
+spc        = char ' ' <|> char '\t'
+comment    = whatever $ char '#' *> takeTill (=='\n')
+line p     = p *> (lexeme endOfLine)
+blank      = line $ lexeme $ (try comment) <|> return ()
 
-zee = lexeme $ string "Z"
-quote = lexeme $ string "\""
+zee    = lexeme $ string "Z"
+quote  = lexeme $ string "\""
 lbrace = lexeme $ string "["
 rbrace = lexeme $ string "]"
-comma = lexeme $ string ","
+comma  = lexeme $ string ","
 period = lexeme $ string "."
-equal = lexeme $ string "="
-true = lexeme $ string "true"
-false = lexeme $ string "false"
+equal  = lexeme $ string "="
+true   = lexeme $ string "true"
+false  = lexeme $ string "false"
 
 between a b p = do { a; e <- p; b; return e }

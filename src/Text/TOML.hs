@@ -1,21 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Text.TOML where
 
 import qualified Data.Attoparsec.ByteString.Char8 as A
 import qualified Data.ByteString.Char8 as B
 import Data.List ( foldl', groupBy )
 import Data.Either ( rights )
-import Data.Map ( Map )
 import qualified Data.Map as M
 
 import Text.TOML.Parser
-import Text.TOML.Value
 
 
 parse :: B.ByteString -> Maybe TOML
-parse bs = process `fmap` parse' bs
+parse bs = process `fmap` tokenize bs
 
-parse' bs = (A.maybeResult $ A.feed (A.parse document bs) "")
+tokenize :: B.ByteString -> Maybe [Token]
+tokenize bs = A.maybeResult $ A.feed (A.parse document bs) ""
 
 process :: [Token] -> TOML
 process ts = go (group ts) tempty
@@ -34,9 +34,10 @@ process ts = go (group ts) tempty
       where kvs' = [(B.unpack k, Right v) | (k, v) <- kvs]
 
 -- NB: groupBy will never produce an empty group.
+group :: [Either [t1] t] -> [([t1], [t])]
 group ts = alternate $ (map omg) $ (groupBy right ts)
-  where 
-    omg ls@((Left l):_)  = Left l
+  where
+    omg    ((Left l):_)  = Left l
     omg rs@((Right _):_) = Right (rights rs)
     -- Only key-value pairs are grouped together
     right (Right _) (Right _) = True
@@ -52,4 +53,3 @@ group ts = alternate $ (map omg) $ (groupBy right ts)
     alternate ((Right r)             : gs) = ([], r ) : (alternate gs)
     alternate ((Left l ) : (Right r) : gs) = (l , r ) : (alternate gs)
     alternate ((Left l1) : (Left l2) : gs) = (l1, []) : (alternate $ (Left l2) : gs)
-
