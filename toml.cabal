@@ -1,22 +1,53 @@
-name:       toml
-version:    0.1.3
-cabal-version: >= 1.2
-build-type: Simple
-license: BSD3
-description:
-    Whiskey-driven YAML replacement.
+name:              toml
+version:           0.1.3.1
+synopsis:          TOML is an obvious and minimal configuration file format.
+-- description:
+homepage:          https://github.com/seliopou/toml
+license:           BSD3
+license-file:      LICENSE
+author:            Spiros Eliopoulos
+category:          Text
+build-type:        Simple
+cabal-version:     >= 1.10
 
 library
-    hs-source-dirs: src
-    build-depends:
-        base >= 4 && < 5,
-        attoparsec >= 0.10 && < 0.13,
-        containers >= 0.5 && < 0.6,
-        bytestring >= 0.10 && < 0.11,
-        time -any,
-        old-locale -any
+  exposed-modules:      Text.TOML
+                        , Text.TOML.Parser
+                        , Text.TOML.Value
+  hs-source-dirs:       src
+  default-language:     Haskell2010
+  build-depends:        base             >= 4.6  && < 5
+                        , attoparsec     >= 0.10 && < 0.13
+                        , containers     >= 0.5  && < 0.6
+                        , bytestring     >= 0.10 && < 0.11
+                        , time           -any
+                        , old-locale     -any
 
-    exposed-modules:
-        Text.TOML
-        Text.TOML.Parser
-        Text.TOML.Value
+executable test-toml
+  hs-source-dirs:       test
+  ghc-options:          -Wall
+  main-is:              Test.hs
+  default-language:     Haskell2010
+  build-depends:        base             >= 4.6  && < 5
+                        , attoparsec     >= 0.10 && < 0.13
+                        , bytestring     >= 0.10 && < 0.11
+                        , time           -any
+                        , Cabal          >= 1.16.0
+                        , toml
+                        , tasty
+                        , tasty-hspec
+
+test-suite Tests
+  hs-source-dirs:       test
+  ghc-options:          -Wall
+  main-is:              Test.hs
+  Type:                 exitcode-stdio-1.0
+  default-language:     Haskell2010
+  build-depends:        base             >= 4.6  && < 5
+                        , attoparsec     >= 0.10 && < 0.13
+                        , bytestring     >= 0.10 && < 0.11
+                        , time           -any
+                        , Cabal          >= 1.16.0
+                        , toml
+                        , tasty
+                        , tasty-hspec
