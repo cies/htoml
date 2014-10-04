@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.TOML where
+module Text.TOML
+  ( parseMaybe
+  , parseEither
+  ) where
 
 import qualified Data.Attoparsec.ByteString.Char8 as A
 import qualified Data.ByteString.Char8 as B
@@ -11,12 +14,26 @@ import qualified Data.Map as M
 import Text.TOML.Parser
 
 
-parse :: B.ByteString -> Maybe TOML
-parse bs = process `fmap` tokenize bs
+-- | Parse a 'ByteString' that 'Maybe' results in an internal representation
+-- of the document in the 'TOML' data type.
+parseMaybe:: B.ByteString -> Maybe TOML
+parseMaybe bs = process `fmap` (A.maybeResult . parse) bs
 
-tokenize :: B.ByteString -> Maybe [Token]
-tokenize bs = A.maybeResult $ A.feed (A.parse document bs) ""
+-- | Parse a 'ByteString' that results in 'Either' a 'String'
+-- containing the error message, or an internal representation
+-- of the document in the 'TOML' data type.
+parseEither :: B.ByteString -> Either String TOML
+parseEither bs = case A.eitherResult . parse $ bs of
+                   Left  e  -> Left e
+                   Right ts -> Right $ process ts
 
+
+-- | Parse a 'ByteString' to a 'Result' containing a list of 'Token's.
+-- The 'Token's need to be processed further in order to be properly structured.
+parse :: B.ByteString -> A.Result [Token]
+parse bs = A.feed (A.parse document bs) ""
+
+-- | Process a list of 'Token's to a properly structured 'TOML'.
 process :: [Token] -> TOML
 process ts = go (group ts) tempty
   where
@@ -47,7 +64,6 @@ group ts = alternate $ (map omg) $ (groupBy right ts)
     -- don't belong to a keygroup. Assign that one the 'empty' keygroup, and match
     -- pairs. If the token list starts with a right, then there are no "global"
     -- key-value pairs, and it's ok to straight zip the partition.
-    --
     alternate                          []  = []
     alternate ((Left l)              : []) = (l , []) : []
     alternate ((Right r)             : gs) = ([], r ) : (alternate gs)
