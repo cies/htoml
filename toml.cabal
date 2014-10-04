@@ -36,6 +36,7 @@ executable test-toml
                         , toml
                         , tasty
                         , tasty-hspec
+                        , neat-interpolation
 
 test-suite Tests
   hs-source-dirs:       test
@@ -51,3 +52,4 @@ test-suite Tests
                         , toml
                         , tasty
                         , tasty-hspec
+                        , neat-interpolation

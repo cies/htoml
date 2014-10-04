@@ -11,5 +11,6 @@ main = do
   parserSpec <- tomlParserSpec
   defaultMain $ testGroup "All parser tests"
     [ parserSpec
-    --, quickCheckSuite
+      --, quickCheckSuite
+      -- A QuickCheck suite for a parser is possible. The internet knows.
     ]
