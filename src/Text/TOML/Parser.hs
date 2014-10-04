@@ -12,8 +12,8 @@ module Text.TOML.Parser
 
 import Control.Applicative
 
-import qualified Data.ByteString.Char8 as B
-import Data.Attoparsec.ByteString.Char8
+import qualified Data.Text as T
+import Data.Attoparsec.Text
 import Data.Time.Format
 
 import System.Locale
@@ -21,7 +21,7 @@ import System.Locale
 import Text.TOML.Value
 
 
-type Token = Either [B.ByteString] (B.ByteString, TOMLV)
+type Token = Either [T.Text] (T.Text, TOMLV)
 
 
 document :: Parser [Token]
@@ -30,13 +30,13 @@ document = smb *> many ekk <* endOfInput
     smb = skipMany blank
     ekk = (eitherP keygroup keyval) <* smb
 
-keygroup :: Parser [B.ByteString]
+keygroup :: Parser [T.Text]
 keygroup = do
     skipMany blank
     between lbrace rbrace skey
   where skey = keyg `sepBy` period
 
-keyval :: Parser (B.ByteString, TOMLV)
+keyval :: Parser (T.Text, TOMLV)
 keyval = do
     k <- keyv
     v <- equal *> value
@@ -54,7 +54,7 @@ value = (array <?> "array")
   where
     array = VArray <$> between lbrace rbrace (value `sepBy` comma)
     bool = VBool <$> (true *> return True <|> false *> return False)
-    str = VString <$> between quote quote (many (notChar '"'))
+    str = VString <$> between quote quote (fmap T.pack $ many (notChar '"'))
     num = do
         n <- lexeme $ number
         case n of
@@ -62,7 +62,7 @@ value = (array <?> "array")
             D d -> return $ VDouble d
     date = do
         dstr <- takeTill (=='Z') <* zee
-        let mt = parseTime defaultTimeLocale (iso8601DateFormat (Just "%X")) (B.unpack dstr)
+        let mt = parseTime defaultTimeLocale (iso8601DateFormat (Just "%X")) (T.unpack dstr)
         case mt of
             Just t  -> return (VDate t)
             Nothing -> fail "parse date failed"

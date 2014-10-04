@@ -11,16 +11,17 @@ module Text.TOML.Value
 
 import Data.Map ( Map )
 import qualified Data.Map as M
+import qualified Data.Text as T
 import Data.Time.Clock
 import Data.Time.Format()
 
 
 type Value = Either TOML TOMLV
 
-newtype TOML = TOML (Map String Value)
+newtype TOML = TOML (Map T.Text Value)
   deriving ( Eq, Ord, Show )
 
-data TOMLV = VString String
+data TOMLV = VString T.Text
            | VInteger Integer
            | VDouble Double
            | VBool Bool
@@ -32,12 +33,12 @@ data TOMLV = VString String
 tempty :: TOML
 tempty = TOML M.empty
 
-liftT :: (Map String Value -> Map String Value) -> TOML -> TOML
+liftT :: (Map T.Text Value -> Map T.Text Value) -> TOML -> TOML
 liftT f (TOML m) = (TOML $ f m)
 
 liftTV :: (TOML -> TOML) -> Value -> Value
 liftTV f (Left  t) = Left $ f t
 liftTV f (Right _) = Left $ f tempty
 
-tinsert :: String -> Value -> TOML -> TOML
+tinsert :: T.Text -> Value -> TOML -> TOML
 tinsert k v t = liftT (M.insert k v) t

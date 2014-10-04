@@ -5,32 +5,32 @@ module Text.TOML
   , parseEither
   ) where
 
-import qualified Data.Attoparsec.ByteString.Char8 as A
-import qualified Data.ByteString.Char8 as B
-import Data.List ( foldl', groupBy )
-import Data.Either ( rights )
+import qualified Data.Attoparsec.Text as A
+import qualified Data.Text as T
+import Data.List (foldl', groupBy)
+import Data.Either (rights)
 import qualified Data.Map as M
 
 import Text.TOML.Parser
 
 
--- | Parse a 'ByteString' that 'Maybe' results in an internal representation
+-- | Parse a 'Text' that 'Maybe' results in an internal representation
 -- of the document in the 'TOML' data type.
-parseMaybe:: B.ByteString -> Maybe TOML
+parseMaybe:: T.Text -> Maybe TOML
 parseMaybe bs = process `fmap` (A.maybeResult . parse) bs
 
--- | Parse a 'ByteString' that results in 'Either' a 'String'
+-- | Parse a 'Text' that results in 'Either' a 'String'
 -- containing the error message, or an internal representation
 -- of the document in the 'TOML' data type.
-parseEither :: B.ByteString -> Either String TOML
+parseEither :: T.Text -> Either String TOML
 parseEither bs = case A.eitherResult . parse $ bs of
                    Left  e  -> Left e
                    Right ts -> Right $ process ts
 
 
--- | Parse a 'ByteString' to a 'Result' containing a list of 'Token's.
+-- | Parse a 'Text' to a 'Result' containing a list of 'Token's.
 -- The 'Token's need to be processed further in order to be properly structured.
-parse :: B.ByteString -> A.Result [Token]
+parse :: T.Text -> A.Result [Token]
 parse bs = A.feed (A.parse document bs) ""
 
 -- | Process a list of 'Token's to a properly structured 'TOML'.
@@ -40,15 +40,15 @@ process ts = go (group ts) tempty
     go []             m = m
     go ((ks, kvs):gs) m = go gs (okalter ks kvs m)
 
-    okalter :: [B.ByteString] -> [(B.ByteString, TOMLV)] -> TOML -> TOML
+    okalter :: [T.Text] -> [(T.Text, TOMLV)] -> TOML -> TOML
     okalter []     kvs t = insertMany kvs t
-    okalter (k:ks) kvs t = liftT (M.alter (Just . f) (B.unpack k)) t
+    okalter (k:ks) kvs t = liftT (M.alter (Just . f) k) t
       where f Nothing   = liftTV (okalter ks kvs) (Left tempty)
             f (Just t') = liftTV (okalter ks kvs) t'
 
-    insertMany :: [(B.ByteString, TOMLV)] -> TOML -> TOML
+    insertMany :: [(T.Text, TOMLV)] -> TOML -> TOML
     insertMany kvs m = foldl' (flip $ uncurry tinsert) m kvs'
-      where kvs' = [(B.unpack k, Right v) | (k, v) <- kvs]
+      where kvs' = [(k, Right v) | (k, v) <- kvs]
 
 -- NB: groupBy will never produce an empty group.
 group :: [Either [t1] t] -> [([t1], [t])]

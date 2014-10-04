@@ -6,9 +6,9 @@ module Text.TOML.Parser.Spec (tomlParserSpec) where
 import Test.Tasty (TestTree)
 import Test.Tasty.Hspec
 
-import Data.Attoparsec.ByteString.Char8 (parseOnly)
+import Data.Attoparsec.Text (parseOnly)
 import NeatInterpolation
-import Data.ByteString.Char8 (pack)
+import Data.Text (pack)
 -- import qualified Data.Text.IO as Text
 -- import Data.Text (unpack)
 import Data.Time.Clock (UTCTime(..))
@@ -57,7 +57,7 @@ tomlParserSpec' = do
         , Right ("enabled",VBool True) ]
 
     it "should parse the simple 'unicode' value from the example" $
-      testParser document "country = \"中国\" # This should be parsed as UTF-8"
+      testParser document "country = \"中国\" # This should be parsed as UTF-8\n"
                           [ Right ("country", VString "中国") ]
 
     it "should parse the nested 'array' from the example" $
@@ -84,6 +84,9 @@ tomlParserSpec' = do
 
     it "should parse non-empty documents that do not end with a newline" $
       testParser document "number = 123" [ Right ("number", VInteger 123) ]
+
+    it "should parse when document ends in a comment" $
+      testParser document "q = 42  # understood?" [ Right ("q", VInteger 42) ]
 
     it "should not parse rubbish" $
       testParserFails document "{"
