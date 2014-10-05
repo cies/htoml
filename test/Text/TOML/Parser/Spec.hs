@@ -9,8 +9,6 @@ import Test.Tasty.Hspec
 import Data.Attoparsec.Text (parseOnly)
 import NeatInterpolation
 import Data.Text (pack)
--- import qualified Data.Text.IO as Text
--- import Data.Text (unpack)
 import Data.Time.Clock (UTCTime(..))
 import Data.Time.Calendar (Day(..))
 
@@ -56,6 +54,10 @@ tomlParserSpec' = do
         , Right ("connection_max", VInteger 5000)
         , Right ("enabled",VBool True) ]
 
+    it "should parse the common escape sequences in basic strings" $
+      testParser document "escaped = \"123\\b\\t\\n\\f\\r\\\"\\/\""
+                          [ Right ("escaped", VString "") ]
+
     it "should parse the simple 'unicode' value from the example" $
       testParser document "country = \"中国\" # This should be parsed as UTF-8\n"
                           [ Right ("country", VString "中国") ]
@@ -81,6 +83,73 @@ tomlParserSpec' = do
           ]
         |])
         [ Right ("hosts", VArray [VString "alpha", VString "omega"]) ]
+
+    it "should parse multi-line basic strings, with escapes newlines" $
+      testParser document "s = \"\"\"One\nTwo\"\"\"" [ Right ("s", VString "One\nTwo") ]
+
+    it "should parse multi-line basic strings, with newlines" $
+      testParser document
+        (pack [string|
+          s = """One
+          Two"""|])
+        [ Right ("s", VString "One\nTwo") ]
+
+    it "should parse multi-line basic strings, with newlines, ignoring 1 leading newline" $
+      testParser document
+        (pack [string|
+          s = """
+          One
+          Two"""|])
+        [ Right ("s", VString "One\nTwo") ]
+
+    it "should parse multi-line basic strings, with espaced whitespace" $
+      testParser document
+        (pack [string|
+          s = """\
+          Quick \
+
+          Jumped \
+             Lazy\
+          """|])
+        [ Right ("s", VString "Quick Jumped Lazy") ]
+
+    it "should parse literal strings literally" $
+      testParser document "s = 'Mr \"Dub\"'s file, \\\\User\\new\\tmp\\'"
+                          [ Right ("s", VString "Mr \"Dub\"'s file, \\\\User\\new\\tmp\\") ]
+
+    it "has no notion of 'escaped single quotes' in literal strings" $
+      testParserFails document "s = 'I don\\'t know.'"  -- string terminates before the "t"
+
+    it "should parse multi-line literal strings literally" $
+      testParser document
+        (pack [string|
+          s = '''
+          First newline is dropped.
+              Other whitespace,
+              is preserved -- isn't it?
+          '''|])
+        [ Right ("s", VString (pack [string|First newline is dropped.
+                                                Other whitespace,
+                                                is preserved -- isn't it?
+                                           |])) ]
+
+    it "should distinguish between integers and floats (doubles)" $
+      testParser document "data = [[42, -17], [3.14, -0.01]]"
+        [ Right ("data", VArray [ VArray [ VInteger   42
+                                         , VInteger (-17)    ]
+                                , VArray [ VDouble     3.14
+                                         , VDouble   (-0.01) ] ]) ]
+
+    it "inside an array, all element need to be of the same type" $
+      testParserFails document "data = [1, 2.0]"
+
+    it "should parse terminating commas in arrays just fine" $
+      testParser document "a = [1, 2, ]"
+                          [ Right ("a", VArray [ VInteger 1, VInteger 2 ]) ]
+
+
+    -- TODO: The "Table" and "Array of Tables" sections form the TOML spec
+
 
     it "should parse non-empty documents that do not end with a newline" $
       testParser document "number = 123" [ Right ("number", VInteger 123) ]
