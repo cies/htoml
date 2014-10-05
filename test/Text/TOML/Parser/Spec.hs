@@ -31,7 +31,7 @@ tomlParserSpec' = do
         (pack [string|
           [owner]
             bio = "GitHub Cofounder & CEO"
-            dob = 1979-05-27T07:32:00Z # First class dates? Why not?
+            dob = 1979-05-27T07:32:00Z  # First class dates? Why not?
         |])
         [ Left ["owner"]
         , Right ("bio", VString "GitHub Cofounder & CEO")

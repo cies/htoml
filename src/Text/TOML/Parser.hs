@@ -11,61 +11,87 @@ module Text.TOML.Parser
 
 
 import Control.Applicative
-
-import qualified Data.Text as T
-import Data.Attoparsec.Text
-import Data.Time.Format
-
-import System.Locale
+import Data.Text (Text, pack, unpack)
+import Data.Attoparsec.Text hiding (signed, double)
+import Data.Time.Format (parseTime)
+import System.Locale (defaultTimeLocale, iso8601DateFormat)
 
 import Text.TOML.Value
 
 
-type Token = Either [T.Text] (T.Text, TOMLV)
+-- | A TOML Token, an unstructured part of a TOML document
+type Token = Either [Text] (Text, TOMLV)
 
 
+-- | Parser for a whole document
 document :: Parser [Token]
 document = smb *> many ekk <* endOfInput
   where
     smb = skipMany blank
     ekk = (eitherP keygroup keyval) <* smb
 
-keygroup :: Parser [T.Text]
+-- | Parser for a table header
+keygroup :: Parser [Text]
 keygroup = do
     skipMany blank
     between lbrace rbrace skey
-  where skey = keyg `sepBy` period
+  where
+    skey = keyg `sepBy` period
+    keyg = lexeme $ takeWhile1 $ notInClass " \t\n]."
 
-keyval :: Parser (T.Text, TOMLV)
+-- | Parser for a key-value pair
+keyval :: Parser (Text, TOMLV)
 keyval = do
     k <- keyv
     v <- equal *> value
     return (k, v)
-
-keyg = lexeme $ takeWhile1 $ notInClass " \t\n]."
-keyv = lexeme $ takeWhile1 $ notInClass " \t\n="
-
-value :: Parser TOMLV
-value = (array <?> "array")
-    <|> (bool  <?> "bool")
-    <|> (str   <?> "string")
-    <|> (date  <?> "date")
-    <|> (num   <?> "number")
   where
-    array = VArray <$> between lbrace rbrace (value `sepBy` comma)
-    bool = VBool <$> (true *> return True <|> false *> return False)
-    str = VString <$> between quote quote (fmap T.pack $ many (notChar '"'))
-    num = do
-        n <- lexeme $ number
-        case n of
-            I n -> return $ VInteger n
-            D d -> return $ VDouble d
-    date = do
-        dstr <- takeTill (=='Z') <* zee
-        let mt = parseTime defaultTimeLocale (iso8601DateFormat (Just "%X")) (T.unpack dstr)
-        case mt of
-            Just t  -> return (VDate t)
-            Nothing -> fail "parse date failed"
+    keyv = lexeme $ takeWhile1 $ notInClass " \t\n="
+
+-- | Parser for a value
+value :: Parser TOMLV
+value = (array   <?> "array")
+    <|> (bool    <?> "bool")
+    <|> (str     <?> "string")
+    <|> (date    <?> "date")
+    <|> (double  <?> "number")
+    <|> (integer <?> "number")
+
+
+--
+-- Toml value types
+--
+
+array, bool, str, date, double, integer :: Parser TOMLV
+
+array = VArray <$> between lbrace rbrace (value `sepBy` comma)
+
+bool = VBool <$> (true *> return True <|> false *> return False)
+
+str = VString <$> between quote quote (fmap pack $ many (notChar '"'))
+
+date = do
+    dstr <- takeTill (=='Z') <* zee
+    let mt = parseTime defaultTimeLocale (iso8601DateFormat (Just "%X")) (unpack dstr)
+    case mt of
+        Just t  -> return (VDate t)
+        Nothing -> fail "parse date failed"
+
+-- Attoparsec 'double' parses scientific "e" notation; reimplement according to TOML spec
+double = VDouble <$> (lexeme $ signed unsignedDouble)
+unsignedDouble :: Parser Double
+unsignedDouble = do
+  let numStr = many . satisfy $ (\c -> c >= '0' && c <= '9')
+  n <- numStr
+  char '.'  -- do not use the period lexeme (that allows tailing whitespace)
+  d <- numStr
+  return (read $ n ++ "." ++ d)
+
+integer = VInteger <$> (lexeme $ signed decimal)
+
+-- Attoparsec 'signed' allows a "+" prefix; reimplement according to TOML spec
+signed :: Num a => Parser a -> Parser a
+signed p = (negate <$> (char '-' *> p)) <|> p
 
 -- TODO: The current string parser is very naive, fix it.
 -- The strin parser below is from the json package, it uses Parsec.
@@ -93,12 +119,22 @@ value = (array <?> "array")
 --                         max_char  = fromEnum (maxBound :: Char)
 
 
-whatever p = p >> return ()
-lexeme p   = do { x <- p; many spc; return x }
-spc        = char ' ' <|> char '\t'
-comment    = whatever $ char '#' *> takeTill (=='\n')
-line p     = p *> (lexeme endOfLine)
-blank      = line $ lexeme $ (try comment) <|> return ()
+--
+-- Utility functions
+--
+
+whatever p    = p >> return ()
+lexeme p      = do { x <- p; many spc; return x }  -- collapse tailing whitespaces
+spc           = char ' ' <|> char '\t'
+comment       = whatever $ char '#' *> takeTill (=='\n')
+line p        = p *> (lexeme endOfLine)
+blank         = line $ lexeme $ (try comment) <|> return ()
+between a b p = do { a; e <- p; b; return e }
+
+
+--
+-- Literals
+--
 
 zee    = lexeme $ string "Z"
 quote  = lexeme $ string "\""
@@ -109,5 +145,3 @@ period = lexeme $ string "."
 equal  = lexeme $ string "="
 true   = lexeme $ string "true"
 false  = lexeme $ string "false"
-
-between a b p = do { a; e <- p; b; return e }
