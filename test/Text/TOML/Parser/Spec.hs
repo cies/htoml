@@ -21,7 +21,7 @@ tomlParserSpec = testSpec "parser tests" tomlParserSpec'
 tomlParserSpec' :: Spec
 tomlParserSpec' = do
 
-  describe "Parser.document" $ do
+  describe "Parser.document generic" $ do
 
     it "should parse empty input" $
       testParser document "" []
@@ -53,6 +53,18 @@ tomlParserSpec' = do
                                  , VInteger 8002 ])
         , Right ("connection_max", VInteger 5000)
         , Right ("enabled",VBool True) ]
+
+    it "should parse non-empty documents that do not end with a newline" $
+      testParser document "number = 123" [ Right ("number", VInteger 123) ]
+
+    it "should parse when document ends in a comment" $
+      testParser document "q = 42  # understood?" [ Right ("q", VInteger 42) ]
+
+    it "should not parse rubbish" $
+      testParserFails document "{"
+
+
+  describe "Parser.document strings" $ do
 
     it "should parse the common escape sequences in basic strings" $
       testParser document "escaped = \"123\\b\\t\\n\\f\\r\\\"\\/\""
@@ -112,6 +124,9 @@ tomlParserSpec' = do
                                                 is preserved -- isn't it?
                                            |])) ]
 
+
+  describe "Parser.document numbers" $ do
+
     it "should distinguish between integers and floats (doubles)" $
       testParser document "data = [[42, -17], [3.14, -0.01]]"
         [ Right ("data", VArray [ VArray [ VInteger   42
@@ -119,6 +134,24 @@ tomlParserSpec' = do
                                 , VArray [ VDouble     3.14
                                          , VDouble   (-0.01) ] ]) ]
 
+    it "should not accept floats starting with a dot" $
+      testParserFails document "n = .5"
+
+    it "should not accept floats without any decimals" $
+      testParserFails document "n = 5."
+
+    it "should not accept 'scientific notation' ('e'-notation) of numbers" $
+      testParserFails document "one_and_a_half_million = 1.5e6"
+
+    it "should not allow integers prefixed with a plus" $
+      testParserFails document "n = +42"
+
+    it "should not allow floats prefixed with a plus" $
+      testParserFails document "n = +2.1828"
+
+
+
+  describe "Parser.document arrays" $ do
 
     it "should parse nested arrays" $
       testParser document
@@ -177,15 +210,6 @@ tomlParserSpec' = do
 
     -- TODO: The "Table" and "Array of Tables" sections form the TOML spec
 
-
-    it "should parse non-empty documents that do not end with a newline" $
-      testParser document "number = 123" [ Right ("number", VInteger 123) ]
-
-    it "should parse when document ends in a comment" $
-      testParser document "q = 42  # understood?" [ Right ("q", VInteger 42) ]
-
-    it "should not parse rubbish" $
-      testParserFails document "{"
 
   where testParser p str success = case parseOnly p str of Left  _ -> False
                                                            Right x -> x == success

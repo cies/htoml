@@ -122,7 +122,7 @@ date = do
 double = VDouble <$> (lexeme $ signed unsignedDouble)
 unsignedDouble :: Parser Double
 unsignedDouble = do
-  let numStr = many . satisfy $ (\c -> c >= '0' && c <= '9')
+  let numStr = many1 . satisfy $ (\c -> c >= '0' && c <= '9')
   n <- numStr
   char '.'  -- do not use the period lexeme (that allows tailing whitespace)
   d <- numStr
