@@ -1,0 +1,5 @@
+import Data.Attoparsec.Text
+import Data.Text
+
+:seti -XOverloadedStrings
+:set prompt "> "
