@@ -70,12 +70,12 @@ value = (array           <?> "array")
 array, bool, basicStr, multiBasicStr, literalStr, multiLiteralStr,
   date, double, integer :: Parser TOMLV
 
-array = VArray <$> between lbrace rbrace (broadSepVals)
+array = VArray <$> between lbrace rbrace separatedValues
   where
-    broadSepVals   = many blank *> value `sepBy` commaBlank <* maybeTermComma
-    commaBlank     = comma <* many blank
-    maybeTermComma = (comma <|> return "") <* many blank
-    comma          = lexeme $ string ","
+    separatedValues = many blank *> value `sepBy` commaB <* maybeTermCommaB
+    commaB          = comma <* many blank
+    maybeTermCommaB = (comma <|> return "") <* many blank
+    comma           = lexeme $ string ","
 
 bool = VBool <$> (true *> return True <|> false *> return False)
 
