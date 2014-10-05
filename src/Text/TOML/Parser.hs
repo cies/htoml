@@ -11,6 +11,8 @@ module Text.TOML.Parser
 
 
 import Control.Applicative
+import Control.Monad (replicateM)
+import Data.Maybe (catMaybes)
 import Data.Text (Text, pack, unpack)
 import Data.Attoparsec.Text hiding (signed, double)
 import Data.Time.Format (parseTime)
@@ -50,48 +52,40 @@ keyval = do
 
 -- | Parser for a value
 value :: Parser TOMLV
-value = (array   <?> "array")
-    <|> (bool    <?> "bool")
-    <|> (str     <?> "string")
-    <|> (date    <?> "date")
-    <|> (double  <?> "number")
-    <|> (integer <?> "number")
+value = (array           <?> "array")
+    <|> (bool            <?> "bool")
+    <|> (multiBasicStr   <?> "string")
+    <|> (basicStr        <?> "string")
+    <|> (multiLiteralStr <?> "string")
+    <|> (literalStr      <?> "string")
+    <|> (date            <?> "date")
+    <|> (double          <?> "number")
+    <|> (integer         <?> "number")
 
 
 --
 -- Toml value types
 --
 
-array, bool, str, date, double, integer :: Parser TOMLV
+array, bool, basicStr, multiBasicStr, literalStr, multiLiteralStr,
+  date, double, integer :: Parser TOMLV
 
-array = VArray <$> between lbrace rbrace (value `sepBy` comma)
+array = VArray <$> between lbrace rbrace (broadSepVals)
+  where
+    broadSepVals   = many blank *> value `sepBy` commaBlank <* maybeTermComma
+    commaBlank     = comma <* many blank
+    maybeTermComma = (comma <|> return "") <* many blank
+    comma          = lexeme $ string ","
 
 bool = VBool <$> (true *> return True <|> false *> return False)
 
-str = VString <$> between quote quote (fmap pack $ many (notChar '"'))
+basicStr = VString <$> between dquote dquote (fmap pack $ many (notChar '"'))
 
-date = do
-    dstr <- takeTill (=='Z') <* zee
-    let mt = parseTime defaultTimeLocale (iso8601DateFormat (Just "%X")) (unpack dstr)
-    case mt of
-        Just t  -> return (VDate t)
-        Nothing -> fail "parse date failed"
+multiBasicStr = VString <$> (dquote *> (fmap pack $ manyTill anyChar (string "\"\"\"")))
 
--- Attoparsec 'double' parses scientific "e" notation; reimplement according to TOML spec
-double = VDouble <$> (lexeme $ signed unsignedDouble)
-unsignedDouble :: Parser Double
-unsignedDouble = do
-  let numStr = many . satisfy $ (\c -> c >= '0' && c <= '9')
-  n <- numStr
-  char '.'  -- do not use the period lexeme (that allows tailing whitespace)
-  d <- numStr
-  return (read $ n ++ "." ++ d)
+literalStr = VString <$> between squote squote (fmap pack $ many (notChar '\''))
 
-integer = VInteger <$> (lexeme $ signed decimal)
-
--- Attoparsec 'signed' allows a "+" prefix; reimplement according to TOML spec
-signed :: Num a => Parser a -> Parser a
-signed p = (negate <$> (char '-' *> p)) <|> p
+multiLiteralStr = VString <$> (squote *> (fmap pack $ manyTill anyChar (string "'''")))
 
 -- TODO: The current string parser is very naive, fix it.
 -- The strin parser below is from the json package, it uses Parsec.
@@ -118,17 +112,39 @@ signed p = (negate <$> (char '-' *> p)) <|> p
 --                   where code      = fst $ head $ readHex x
 --                         max_char  = fromEnum (maxBound :: Char)
 
+date = do
+  dstr <- takeTill (=='Z') <* zee
+  let mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") (unpack dstr)
+  case mt of Just t  -> return $ VDate t
+             Nothing -> fail "parse date failed"
+
+-- Attoparsec 'double' parses scientific "e" notation; reimplement according to TOML spec
+double = VDouble <$> (lexeme $ signed unsignedDouble)
+unsignedDouble :: Parser Double
+unsignedDouble = do
+  let numStr = many . satisfy $ (\c -> c >= '0' && c <= '9')
+  n <- numStr
+  char '.'  -- do not use the period lexeme (that allows tailing whitespace)
+  d <- numStr
+  return (read $ n ++ "." ++ d)
+
+integer = VInteger <$> (lexeme $ signed decimal)
+
+-- Attoparsec 'signed' allows a "+" prefix; reimplement according to TOML spec
+signed :: Num a => Parser a -> Parser a
+signed p = (negate <$> (char '-' *> p)) <|> p
+
 
 --
 -- Utility functions
 --
 
-whatever p    = p >> return ()
 lexeme p      = do { x <- p; many spc; return x }  -- collapse tailing whitespaces
 spc           = char ' ' <|> char '\t'
-comment       = whatever $ char '#' *> takeTill (=='\n')
-line p        = p *> (lexeme endOfLine)
 blank         = line $ lexeme $ (try comment) <|> return ()
+line p        = p *> (lexeme endOfLine)
+comment       = whatever $ char '#' *> takeTill (=='\n')
+whatever p    = p >> return ()
 between a b p = do { a; e <- p; b; return e }
 
 
@@ -136,12 +152,14 @@ between a b p = do { a; e <- p; b; return e }
 -- Literals
 --
 
-zee    = lexeme $ string "Z"
-quote  = lexeme $ string "\""
-lbrace = lexeme $ string "["
-rbrace = lexeme $ string "]"
-comma  = lexeme $ string ","
-period = lexeme $ string "."
-equal  = lexeme $ string "="
-true   = lexeme $ string "true"
-false  = lexeme $ string "false"
+zee     = lexeme $ string "Z"
+squote  = lexeme $ string "'"
+dquote  = lexeme $ string "\""
+squote3 = lexeme $ string "'''"
+dquote3 = lexeme $ string "\"\"\""
+lbrace  = lexeme $ string "["
+rbrace  = lexeme $ string "]"
+period  = lexeme $ string "."
+equal   = lexeme $ string "="
+true    = lexeme $ string "true"
+false   = lexeme $ string "false"

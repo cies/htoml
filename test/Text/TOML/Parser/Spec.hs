@@ -58,33 +58,12 @@ tomlParserSpec' = do
       testParser document "escaped = \"123\\b\\t\\n\\f\\r\\\"\\/\""
                           [ Right ("escaped", VString "") ]
 
-    it "should parse the simple 'unicode' value from the example" $
+    it "should parse the simple unicode value from the example" $
       testParser document "country = \"中国\" # This should be parsed as UTF-8\n"
                           [ Right ("country", VString "中国") ]
 
-    it "should parse the nested 'array' from the example" $
-      testParser document
-        (pack [string|
-          [clients]
-            data = [ ["gamma", "delta"], [1, 2] ]
-        |])
-        [ Left ["clients"]
-        , Right ("data", VArray [ VArray [ VString "gamma"
-                                         , VString "delta" ]
-                                , VArray [ VInteger 1
-                                         , VInteger 2 ] ]) ]
 
-    it "should allow linebreaks in an array as shown in the example" $
-      testParser document
-        (pack [string|
-          hosts = [
-            "alpha",
-            "omega"
-          ]
-        |])
-        [ Right ("hosts", VArray [VString "alpha", VString "omega"]) ]
-
-    it "should parse multi-line basic strings, with escapes newlines" $
+    it "should parse multi-line basic strings, with escaped newlines" $
       testParser document "s = \"\"\"One\nTwo\"\"\"" [ Right ("s", VString "One\nTwo") ]
 
     it "should parse multi-line basic strings, with newlines" $
@@ -140,12 +119,60 @@ tomlParserSpec' = do
                                 , VArray [ VDouble     3.14
                                          , VDouble   (-0.01) ] ]) ]
 
-    it "inside an array, all element need to be of the same type" $
+
+    it "should parse nested arrays" $
+      testParser document
+        (pack [string|
+          [clients]
+            data = [ ["gamma", "delta"], [1, 2] ]
+        |])
+        [ Left ["clients"]
+        , Right ("data", VArray [ VArray [ VString "gamma"
+                                         , VString "delta" ]
+                                , VArray [ VInteger 1
+                                         , VInteger 2 ] ]) ]
+
+    it "should allow linebreaks in an array" $
+      testParser document
+        (pack [string|
+          hosts = [
+            "alpha",
+            "omega"
+          ]
+        |])
+        [ Right ("hosts", VArray [VString "alpha", VString "omega"]) ]
+
+    it "should allow linebreaks in an array, with comments" $
+      testParser document
+        (pack [string|
+          hosts = [
+            "alpha",  # the first
+            "omega"   # the last
+          ]
+        |])
+        [ Right ("hosts", VArray [VString "alpha", VString "omega"]) ]
+
+    it "should allow linebreaks in an array, with comments, and terminating comma" $
+      testParser document
+        (pack [string|
+          hosts = [
+            "alpha",  # the first
+            "omega",  # the last
+          ]
+        |])
+        [ Right ("hosts", VArray [VString "alpha", VString "omega"]) ]
+
+    it "inside an array, all element should be of the same type" $
       testParserFails document "data = [1, 2.0]"
 
-    it "should parse terminating commas in arrays just fine" $
+    it "should parse terminating commas in arrays" $
       testParser document "a = [1, 2, ]"
                           [ Right ("a", VArray [ VInteger 1, VInteger 2 ]) ]
+
+    it "should parse terminating commas in arrays(2)" $
+      testParser document "a = [1,2,]"
+                          [ Right ("a", VArray [ VInteger 1, VInteger 2 ]) ]
+
 
 
     -- TODO: The "Table" and "Array of Tables" sections form the TOML spec
