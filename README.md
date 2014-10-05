@@ -11,11 +11,15 @@ The documentation for this package may (or may not) be found on [Hackage](docs).
 ### todo
 
 * Add documentation
+* Complete the tests by covering the last two sections of the TOML spec (Tables)
+* Breakingly change the output format to better represent the tree structure that Tables introduce
 * Add more tests (maybe find a more mature TOML parser and steal their tests)
+* Add property tests with QuickCheck (the internet sais it's possible for parsers)
 * Make all tests pass
 * Investigate if the [language agnostic test suite](agno) is interesting for this project
 * Make error messages more useful
 * See how lenses may (or may not) fit into this package
+* See if we can learn more from how Aeson does things
 
 
 [toml]: https://github.com/mojombo/toml
