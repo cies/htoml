@@ -67,6 +67,32 @@ value = (array <?> "array")
             Just t  -> return (VDate t)
             Nothing -> fail "parse date failed"
 
+-- TODO: The current string parser is very naive, fix it.
+-- The strin parser below is from the json package, it uses Parsec.
+--
+-- p_string         :: CharParser () String
+-- p_string          = between (tok (char '"')) (tok (char '"')) (many p_char)
+--   where p_char    =  (char '\\' >> p_esc)
+--                  <|> (satisfy (\x -> x /= '"' && x /= '\\'))
+
+--         p_esc     =  ('"'   <$ char '"')
+--                  <|> ('\\'  <$ char '\\')
+--                  <|> ('/'   <$ char '/')
+--                  <|> ('\b'  <$ char 'b')
+--                  <|> ('\f'  <$ char 'f')
+--                  <|> ('\n'  <$ char 'n')
+--                  <|> ('\r'  <$ char 'r')
+--                  <|> ('\t'  <$ char 't')
+--                  <|> (char 'u' *> p_uni)  -- TODO: add \Uxxxxxxxxx as well
+--                  <?> "escape character"
+
+--         p_uni     = check =<< count 4 (satisfy isHexDigit)
+--           where check x | code <= max_char  = pure (toEnum code)
+--                         | otherwise         = empty
+--                   where code      = fst $ head $ readHex x
+--                         max_char  = fromEnum (maxBound :: Char)
+
+
 whatever p = p >> return ()
 lexeme p   = do { x <- p; many spc; return x }
 spc        = char ' ' <|> char '\t'
