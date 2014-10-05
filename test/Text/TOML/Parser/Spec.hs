@@ -67,13 +67,22 @@ tomlParserSpec' = do
   describe "Parser.document strings" $ do
 
     it "should parse the common escape sequences in basic strings" $
-      testParser document "escaped = \"123\\b\\t\\n\\f\\r\\\"\\/\""
-                          [ Right ("escaped", VString "") ]
+      testParser document "escaped = \"123\\b\\t\\n\\f\\r\\\"\\/\\\\\""
+                          [ Right ("escaped", VString "123\b\t\n\f\r\"/\\") ]
 
     it "should parse the simple unicode value from the example" $
       testParser document "country = \"中国\" # This should be parsed as UTF-8\n"
                           [ Right ("country", VString "中国") ]
 
+    it "should parse escaped 4 digit unicode values" $
+      testParser document "special_k = \"\\u0416\""
+                          [ Right ("special_k", VString "Ж") ]
+
+    it "should parse escaped 8 digit unicode values" $
+      testParser document "g_clef = \"\\U0001D11e\""
+                          [ Right ("g_clef", VString "𝄞") ]
+    it "should not parse escaped unicode values with missing digits" $
+      testParserFails document "g_clef = \"\\U1D11e\""
 
     it "should parse multi-line basic strings, with escaped newlines" $
       testParser document "s = \"\"\"One\nTwo\"\"\"" [ Right ("s", VString "One\nTwo") ]
@@ -157,13 +166,13 @@ tomlParserSpec' = do
       testParser document
         (pack [string|
           [clients]
-            data = [ ["gamma", "delta"], [1, 2] ]
+            d = [ ["gamma", "delta"], [1, 2] ]
         |])
         [ Left ["clients"]
-        , Right ("data", VArray [ VArray [ VString "gamma"
-                                         , VString "delta" ]
-                                , VArray [ VInteger 1
-                                         , VInteger 2 ] ]) ]
+        , Right ("d", VArray [ VArray [ VString "gamma"
+                                      , VString "delta" ]
+                             , VArray [ VInteger 1
+                                      , VInteger 2 ] ]) ]
 
     it "should allow linebreaks in an array" $
       testParser document
@@ -172,6 +181,14 @@ tomlParserSpec' = do
             "alpha",
             "omega"
           ]
+        |])
+        [ Right ("hosts", VArray [VString "alpha", VString "omega"]) ]
+
+    it "should allow some linebreaks in an array" $
+      testParser document
+        (pack [string|
+          hosts = ["alpha" ,
+                   "omega"]
         |])
         [ Right ("hosts", VArray [VString "alpha", VString "omega"]) ]
 

@@ -17,6 +17,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Attoparsec.Text hiding (signed, double)
 import Data.Time.Format (parseTime)
 import System.Locale (defaultTimeLocale, iso8601DateFormat)
+import Numeric (readHex)
 
 import Text.TOML.Value
 
@@ -79,7 +80,25 @@ array = VArray <$> between lbrace rbrace separatedValues
 
 bool = VBool <$> (true *> return True <|> false *> return False)
 
-basicStr = VString <$> between dquote dquote (fmap pack $ many (notChar '"'))
+basicStr = VString <$> between dquote dquote (fmap pack $ many strChar)
+  where
+    strChar = (char '\\' *> escChar) <|> (satisfy (\c -> c /= '"' && c /= '\\'))
+    escChar  = char '"'  *> return '"'
+           <|> char '\\' *> return '\\'
+           <|> char '/' *> return '/'
+           <|> char 'b' *> return '\b'
+           <|> char 't' *> return '\t'
+           <|> char 'n' *> return '\n'
+           <|> char 'f' *> return '\f'
+           <|> char 'r' *> return '\r'
+           <|> char 'u' *> uni 4
+           <|> char 'U' *> uni 8
+           <?> "escape character"
+    uni n = do h <- count n (satisfy isHex)
+               let v = fst . head . readHex $ h
+               return $ if v <= maxChar then toEnum v else '_'
+    isHex c = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+    maxChar  = fromEnum (maxBound :: Char)
 
 multiBasicStr = VString <$> (dquote *> (fmap pack $ manyTill anyChar (string "\"\"\"")))
 
