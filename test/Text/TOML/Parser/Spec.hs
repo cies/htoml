@@ -84,6 +84,9 @@ tomlParserSpec' = do
     it "should not parse escaped unicode values with missing digits" $
       testParserFails document "g_clef = \"\\U1D11e\""
 
+    it "should parse multi-line basic strings" $
+      testParser document "s = \"\"\"thorrough\"\"\"" [ Right ("s", VString "thorrough") ]
+
     it "should parse multi-line basic strings, with escaped newlines" $
       testParser document "s = \"\"\"One\nTwo\"\"\"" [ Right ("s", VString "One\nTwo") ]
 
@@ -114,24 +117,17 @@ tomlParserSpec' = do
         [ Right ("s", VString "Quick Jumped Lazy") ]
 
     it "should parse literal strings literally" $
-      testParser document "s = 'Mr \"Dub\"'s file, \\\\User\\new\\tmp\\'"
-                          [ Right ("s", VString "Mr \"Dub\"'s file, \\\\User\\new\\tmp\\") ]
+      testParser document "s = '\"Your\" folder: \\\\User\\new\\tmp\\'"
+                          [ Right ("s", VString "\"Your\" folder: \\\\User\\new\\tmp\\") ]
 
     it "has no notion of 'escaped single quotes' in literal strings" $
       testParserFails document "s = 'I don\\'t know.'"  -- string terminates before the "t"
 
     it "should parse multi-line literal strings literally" $
       testParser document
-        (pack [string|
-          s = '''
-          First newline is dropped.
-              Other whitespace,
-              is preserved -- isn't it?
-          '''|])
-        [ Right ("s", VString (pack [string|First newline is dropped.
-                                                Other whitespace,
-                                                is preserved -- isn't it?
-                                           |])) ]
+        "s = '''\nFirst newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?'''"
+        [ Right ("s", VString
+          "First newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?") ]
 
 
   describe "Parser.document numbers" $ do
