@@ -3,7 +3,7 @@ module Main where
 
 import Test.Tasty (defaultMain, testGroup)
 
-import Text.TOML.Parser.Spec
+import Text.Toml.Parser.Spec
 
 
 main :: IO ()
