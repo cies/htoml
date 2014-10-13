@@ -6,8 +6,8 @@ module Text.Toml.Parser.Spec (tomlParserSpec) where
 import Test.Tasty (TestTree)
 import Test.Tasty.Hspec
 
-import Data.Attoparsec.Text (parseOnly)
-import NeatInterpolation
+import Control.Applicative ((<*))
+import Data.Attoparsec.Text (parseOnly, endOfInput)
 import qualified Data.Map as M
 import Data.Text (pack)
 import Data.Time.Clock (UTCTime(..))
@@ -191,8 +191,7 @@ tomlParserSpec' = do
       testParser basicStr "\"123\\b\\t\\n\\f\\r\\\"\\/\\\\\"" $ VString "123\b\t\n\f\r\"/\\"
 
     it "should parse the simple unicode value from the example" $
-      testParser assignment "country = \"中国\" # This should be parsed as UTF-8\n"
-                            ("country", VString "中国")
+      testParser basicStr "\"中国\"" $ VString "中国"
 
     it "should parse escaped 4 digit unicode values" $
       testParser assignment "special_k = \"\\u0416\"" ("special_k", VString "Ж")
@@ -209,35 +208,22 @@ tomlParserSpec' = do
     it "should parse simple example" $
       testParser multiBasicStr "\"\"\"thorrough\"\"\"" $ VString "thorrough"
 
-    it "should parse with escaped newlines" $
+    it "should parse with newlines" $
       testParser multiBasicStr "\"\"\"One\nTwo\"\"\"" $ VString "One\nTwo"
 
-    it "should parse with newlines" $
-      testParser multiBasicStr
-        (pack [string|
-          """One
-          Two"""|])
-        $ VString "One\nTwo"
+    it "should parse with escaped newlines" $
+      testParser multiBasicStr "\"\"\"One\\nTwo\"\"\"" $ VString "One\nTwo"
 
     it "should parse newlines, ignoring 1 leading newline" $
-      testParser multiBasicStr
-        (pack [string|
-          """
-          One
-          Two"""|])
-        $ VString "One\nTwo"
+      testParser multiBasicStr "\"\"\"\nOne\\nTwo\"\"\"" $ VString "One\nTwo"
 
     it "should parse with espaced whitespace" $
-      testParser multiBasicStr
-        (pack [string|
-          """\
-          Quick \
-
-          Jumped \
-             Lazy\
-          """|])
-        $ VString "Quick Jumped Lazy"
-
+      testParser multiBasicStr "\"\"\"\\\n\
+                               \Quick \\\n\
+                               \\\\n\
+                               \Jumped \\\n\
+                               \Lazy\\\n\
+                               \ \"\"\"" $ VString "Quick Jumped Lazy"
 
   describe "Parser.literalStr" $ do
 
@@ -306,41 +292,25 @@ tomlParserSpec' = do
                                       , VInteger 2 ] ])
 
     it "should allow linebreaks in an array" $
-      testParser assignment
-        (pack [string|
-          hosts = [
-            "alpha",
-            "omega"
-          ]
-        |])
+      testParser assignment "hosts = [\n'alpha',\n'omega'\n]"
         $ ("hosts", VArray [VString "alpha", VString "omega"])
 
     it "should allow some linebreaks in an array" $
-      testParser assignment
-        (pack [string|
-          hosts = ["alpha" ,
-                   "omega"]
-        |])
+      testParser assignment "hosts = ['alpha' ,\n'omega']"
         $ ("hosts", VArray [VString "alpha", VString "omega"])
 
     it "should allow linebreaks in an array, with comments" $
-      testParser assignment
-        (pack [string|
-          hosts = [
-            "alpha",  # the first
-            "omega"   # the last
-          ]
-        |])
+      testParser assignment "hosts = [\n\
+                            \'alpha',  # the first\n\
+                            \'omega'   # the last\n\
+                            \]"
         $ ("hosts", VArray [VString "alpha", VString "omega"])
 
     it "should allow linebreaks in an array, with comments, and terminating comma" $
-      testParser assignment
-        (pack [string|
-          hosts = [
-            "alpha",  # the first
-            "omega",  # the last
-          ]
-        |])
+      testParser assignment "hosts = [\n\
+                            \'alpha',  # the first\n\
+                            \'omega'   # the last\n\
+                            \]"
         $ ("hosts", VArray [VString "alpha", VString "omega"])
 
     it "inside an array, all element should be of the same type" $
@@ -362,7 +332,9 @@ tomlParserSpec' = do
     -- TODO: The "Table" and "Array of Tables" sections form the Toml spec
 
 
-  where testParser p str success = case parseOnly p str of Left  _ -> False
-                                                           Right x -> x == success
-        testParserFails p str    = case parseOnly p str of Left  _ -> True
-                                                           Right _ -> False
+  where testParser p str success = case parseOnly (p <* endOfInput) str of
+                                     Left  _ -> False
+                                     Right x -> x == success
+        testParserFails p str    = case parseOnly (p <* endOfInput) str of
+                                     Left  _ -> True
+                                     Right _ -> False

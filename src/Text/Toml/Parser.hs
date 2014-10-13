@@ -45,6 +45,7 @@ import Text.Toml.Types
 tomlDoc :: Parser TomlDoc
 tomlDoc = do
     topTable <- skipBlanks *> table
+    skipBlanks
     namedSections <- many namedSection
     endOfInput  -- ensures this input is completely consumed
     case foldr sectionToNode (Right []) namedSections of
@@ -94,8 +95,9 @@ headerValue = (takeWhile1 $ notInClass " \t\n[].#") `sepBy1` (string ".")
 -- | Parses a value-to-key assignment.
 assignment :: Parser (Text, Value)
 assignment = do
-    k <- lexeme . takeWhile1 $ notInClass " \t\n=#"
-    v <- (lexeme $ string "=") *> value
+    k <- takeWhile1 $ notInClass " \t\n=#"
+    skipBlanks >> string "=" >> skipBlanks
+    v <- value
     return (k, v)
 
 
@@ -158,7 +160,7 @@ multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
 literalStr :: Parser Value
 literalStr = vString $ between sQuote sQuote (fmap pack $ many (notChar '\''))
   where
-    sQuote  = string "'"
+    sQuote = string "'"
 
 
 multiLiteralStr :: Parser Value
