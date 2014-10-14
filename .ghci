@@ -1,4 +1,6 @@
+import Control.Applicative
 import Data.Attoparsec.Text
+import Data.Map
 import Data.Text
 
 :seti -XOverloadedStrings

@@ -48,15 +48,17 @@ tomlDoc = do
     skipBlanks
     namedSections <- many namedSection
     endOfInput  -- ensures this input is completely consumed
-    case foldr sectionToNode (Right []) namedSections of
+    case sectionsToNodes (reverse namedSections) of
       Left msg -> fail msg
       Right r  -> return $ TomlDoc topTable r
   where
-    sectionToNode section buildNodes = case buildNodes of
-        Left msg -> Left msg
-        Right bs -> case section of
-                      Left  (ns, tbl) -> mayFail $ insertT  ns tbl bs
-                      Right (ns, tbl) -> mayFail $ insertTA ns tbl bs
+    sectionsToNodes [] = Right []
+    sectionsToNodes ((Left  (ns, tbl)):xs) = case sectionsToNodes xs of
+                                               Left msg -> Left msg
+                                               Right r  -> mayFail $ insertT  ns tbl r
+    sectionsToNodes ((Right (ns, tbl)):xs) = case sectionsToNodes xs of
+                                               Left msg -> Left msg
+                                               Right r  -> mayFail $ insertTA ns tbl r
     mayFail e = case e of Left msg -> Left msg
                           Right r  -> Right r
 

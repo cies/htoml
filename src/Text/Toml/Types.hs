@@ -51,8 +51,8 @@ insertT (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
     Nothing -> if isSub
       then case insertT ns tbl [] of
              Left msg -> Left msg
-             Right r  -> Right $ [TableNode name Nothing r] ++ nodes
-      else Right $ [TableNode name content []] ++ nodes
+             Right r  -> Right $ nodes ++ [TableNode name Nothing r]
+      else Right $ nodes ++ [TableNode name content []]
     Just (idx, TableNode _ c branches) -> case c of
       -- Node exists, but not explicitly defined?
       --   sub name: recurse into existing node
@@ -60,8 +60,8 @@ insertT (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
       Nothing -> if isSub
         then case insertT ns tbl branches of
                Left msg -> Left msg
-               Right r  -> Right $ replaceNode idx (TableNode name c r) nodes
-        else Right $ replaceNode idx (TableNode name content branches) nodes
+               Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
+        else Right $ replaceItem idx (TableNode name content branches) nodes
       -- Node has already been explicitly defined: error out
       Just _ -> Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
   where
@@ -79,7 +79,7 @@ insertTA (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
     Nothing -> if isSub
       then case insertTA ns tbl [TableNode name Nothing []] of
              Left msg -> Left msg
-             Right r  -> Right $ r ++ nodes
+             Right r  -> Right $ nodes ++ r
       else Right $ [TableNode name content []]
     Just (idx, TableNode _ c branches) -> case c of
       -- Node exists, but not explicitly defined:
@@ -88,8 +88,8 @@ insertTA (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
       Nothing -> if isSub
         then case insertTA ns tbl branches of
                Left msg -> Left msg
-               Right r  -> Right $ replaceNode idx (TableNode name c r) nodes
-        else Right $ replaceNode idx (TableNode name content branches) nodes
+               Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
+        else Right $ replaceItem idx (TableNode name content branches) nodes
       Just cc -> case cc of
         -- Node explicitly defined and of type 'Table'?
         --   sub name: recurse
@@ -97,7 +97,7 @@ insertTA (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
         Left _ -> if isSub
           then case insertTA ns tbl branches of
                  Left msg -> Left msg
-                 Right r  -> Right $ replaceNode idx (TableNode name c r) nodes
+                 Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
           else Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
         -- Node explicitly defined and of type 'TableArray'?
         --   sub name: recurse
@@ -105,9 +105,9 @@ insertTA (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
         Right tArray -> if isSub
           then case insertTA ns tbl branches of
                  Left msg -> Left msg
-                 Right r  -> Right $ replaceNode idx (TableNode name c r) nodes
+                 Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
           else let newNode = TableNode name (Just . Right $ tArray ++ [tbl]) branches
-               in  Right $ replaceNode idx newNode nodes
+               in  Right $ replaceItem idx newNode nodes
   where
     content = Just . Right $ [tbl]  -- 'Right' designates a 'TableArray'
     isSub = ns /= []
@@ -121,8 +121,8 @@ idxAndNodeWithName name nodes = fmap (\i -> (i, nodes !! i)) (idxOfName name nod
 
 
 -- | Replace the 'TableNode' from a list pointed by the index.
-replaceNode :: Int -> TableNode -> [TableNode] -> [TableNode]
-replaceNode idx node nodeList = concat [take idx nodeList, [node], drop (idx + 2) nodeList]
+replaceItem :: Int -> a -> [a] -> [a]
+replaceItem idx x xs = concat [take idx xs, [x], drop (idx + 1) xs]
 
 
 -- | The 'Value' of a key-value pair.

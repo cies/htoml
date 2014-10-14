@@ -23,11 +23,6 @@ tomlParserSpec' :: Spec
 tomlParserSpec' = do
 
 
-  describe "Parser.tomlDoc generic" $ do
-
-    it "should parse empty input" $
-      testParser tomlDoc "" $ TomlDoc M.empty []
-
 {-
     it "should parse the simple 'bio' block from the example" $
       testParser tomlDoc
@@ -57,18 +52,69 @@ tomlParserSpec' = do
         , Right ("connection_max", VInteger 5000)
         , Right ("enabled", VBoolean True) ]
 
+-}
+
+  describe "Parser.tomlDoc generic" $ do
+
+    it "should parse empty input" $
+      testParser tomlDoc "" $ TomlDoc M.empty []
+
     it "should parse non-empty tomlDocs that do not end with a newline" $
-      testParser tomlDoc "number = 123" [ Right ("number", VInteger 123) ]
+      testParser tomlDoc "number = 123" $
+        TomlDoc (M.fromList [("number", VInteger 123)]) []
 
     it "should parse when tomlDoc ends in a comment" $
-      testParser tomlDoc "q = 42  # understood?" [ Right ("q", VInteger 42) ]
+      testParser tomlDoc "q = 42  # understood?" $
+        TomlDoc (M.fromList [("q", VInteger 42)]) []
 
     it "should not parse re-assignment of key" $
       testParserFails tomlDoc "q=42\nq=42"
 
     it "should not parse rubbish" $
       testParserFails tomlDoc "{"
--}
+
+
+  describe "Parser.tomlDoc (named tables)" $ do
+
+    it "should parse simple named table" $
+      testParser tomlDoc "[a]\naa = 108" $
+        TomlDoc M.empty [ TableNode "a" (Just . Left $ M.fromList [("aa", VInteger 108)]) [] ]
+
+    it "should not parse redefined table header" $
+      testParserFails tomlDoc "[a]\n[a]"
+
+    it "should parse redefined implicit table header" $
+      testParser tomlDoc "[a.b]\n[a]" $
+        TomlDoc M.empty [ TableNode "a" (Just . Left $ M.empty)
+                                        [TableNode "b" (Just . Left $ M.empty) []] ]
+
+    it "should not parse redefinition by implicit table header" $
+      testParserFails tomlDoc "[a]\n[a.b]"
+
+
+  describe "Parser.tomlDoc (tables arrays)" $ do
+
+    it "should not parse redefined table header" $
+      testParserFails tomlDoc "[[a]]\n[[a]]"
+
+    it "should parse redefined implicit table header" $
+      testParserFails tomlDoc "[[a.b]]\n[[a]]"
+
+    it "should not parse redefinition by implicit table header" $
+      testParserFails tomlDoc "[[a]]\n[[a.b]]"
+
+
+  describe "Parser.tomlDoc (mixed named tables and tables arrays)" $ do
+
+    it "should not parse redefined table header" $
+      testParserFails tomlDoc "[[a]]\n[[a]]"
+
+    it "should parse redefined implicit table header" $
+      testParserFails tomlDoc "[[a.b]]\n[[a]]"
+
+    it "should not parse redefinition by implicit table header" $
+      testParserFails tomlDoc "[[a]]\n[[a.b]]"
+
 
   describe "Parser.headerValue" $ do
 
@@ -101,46 +147,6 @@ tomlParserSpec' = do
 
     it "should parse simple nested table header" $
       testParser tableHeader "[main.sub]" ["main", "sub"]
-
-
-  describe "Parser.tomlDoc (named tables)" $ do
-
-    it "should parse simple named table" $
-      testParser tomlDoc "[a]\naa = 108" $
-        TomlDoc M.empty [ TableNode "a" (Just . Left $ M.fromList [("aa", VInteger 108)]) [] ]
-
-    it "should not parse redefined table header" $
-      testParserFails tomlDoc "[a]\n[a]"
-
-    it "should parse redefined implicit table header" $
-      testParserFails tomlDoc "[a.b]\n[a]"
-
-    it "should not parse redefinition by implicit table header" $
-      testParserFails tomlDoc "[a]\n[a.b]"
-
-
-  describe "Parser.tomlDoc (tables arrays)" $ do
-
-    it "should not parse redefined table header" $
-      testParserFails tomlDoc "[[a]]\n[[a]]"
-
-    it "should parse redefined implicit table header" $
-      testParserFails tomlDoc "[[a.b]]\n[[a]]"
-
-    it "should not parse redefinition by implicit table header" $
-      testParserFails tomlDoc "[[a]]\n[[a.b]]"
-
-
-  describe "Parser.tomlDoc (mixed named tables and tables arrays)" $ do
-
-    it "should not parse redefined table header" $
-      testParserFails tomlDoc "[[a]]\n[[a]]"
-
-    it "should parse redefined implicit table header" $
-      testParserFails tomlDoc "[[a.b]]\n[[a]]"
-
-    it "should not parse redefinition by implicit table header" $
-      testParserFails tomlDoc "[[a]]\n[[a.b]]"
 
 
   describe "Parser.tableArrayHeader" $ do
