@@ -94,11 +94,29 @@ tomlParserSpec' = do
 
   describe "Parser.tomlDoc (tables arrays)" $ do
 
-    it "should not parse redefined table header" $
-      testParserFails tomlDoc "[[a]]\n[[a]]"
+    it "should parse a simple table array" $
+      testParser tomlDoc "[[a]]\na1=1\n[[a]]\na2=2" $
+        TomlDoc M.empty [ TableNode "a" (Just . Right $ [ M.fromList [("a1", VInteger 1)]
+                                                        , M.fromList [("a2", VInteger 2)] ]) [] ]
+    it "should parse a simple empty table array" $
+      testParser tomlDoc "[[a]]\n[[a]]" $
+        TomlDoc M.empty [ TableNode "a" (Just . Right $ [ M.empty, M.empty ]) [] ]
+
+    it "should parse a simple empty table array" $
+      testParser tomlDoc "[[a.b]]\n[[a.b]]" $
+        TomlDoc M.empty [ TableNode "a" Nothing [
+          TableNode "b" (Just . Right $ [ M.empty, M.empty ]) [] ] ]
+
+    it "should parse a simple empty table array" $
+      testParser tomlDoc "[[a.b]]\na1=1\n[[a.b]]\na2=2" $
+        TomlDoc M.empty [ TableNode "a" Nothing [
+          TableNode "b" (Just . Right $ [ M.fromList [("a1", VInteger 1)]
+                                        , M.fromList [("a2", VInteger 2)] ]) [] ] ]
 
     it "should parse redefined implicit table header" $
-      testParserFails tomlDoc "[[a.b]]\n[[a]]"
+      testParser tomlDoc "[[a.b]]\n[[a]]" $
+        TomlDoc M.empty [ TableNode "a" (Just . Right $ [ M.empty ]) [
+          TableNode "b" (Just . Right $ [ M.empty ]) [] ] ]
 
     it "should not parse redefinition by implicit table header" $
       testParserFails tomlDoc "[[a]]\n[[a.b]]"
@@ -106,14 +124,28 @@ tomlParserSpec' = do
 
   describe "Parser.tomlDoc (mixed named tables and tables arrays)" $ do
 
-    it "should not parse redefined table header" $
-      testParserFails tomlDoc "[[a]]\n[[a]]"
+    it "should not parse redefined table header (array by table)" $
+      testParserFails tomlDoc "[[a]]\n[a]"
 
-    it "should parse redefined implicit table header" $
-      testParserFails tomlDoc "[[a.b]]\n[[a]]"
+    it "should not parse redefined table header (table by array)" $
+      testParserFails tomlDoc "[a]\n[[a]]"
 
-    it "should not parse redefinition by implicit table header" $
-      testParserFails tomlDoc "[[a]]\n[[a.b]]"
+    it "should not parse redefinition by implicit table header (array by table)" $
+      testParserFails tomlDoc "[[a]]\n[a.b]"
+
+    it "should not parse redefinition by implicit table header (table by array)" $
+      testParserFails tomlDoc "[a]\n[[a.b]]"
+
+
+    it "should parse redefined implicit table header (table by array)" $
+      testParser tomlDoc "[a.b]\n[[a]]" $
+        TomlDoc M.empty [ TableNode "a" (Just . Right $ [ M.empty ]) [
+          TableNode "b" (Just . Left $ M.empty) [] ] ]
+
+    it "should parse redefined implicit table header (array by table)" $
+      testParser tomlDoc "[[a.b]]\n[a]" $
+        TomlDoc M.empty [ TableNode "a" (Just . Left $ M.empty) [
+          TableNode "b" (Just . Right $ [ M.empty ]) [] ] ]
 
 
   describe "Parser.headerValue" $ do

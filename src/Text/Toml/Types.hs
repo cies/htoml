@@ -77,9 +77,9 @@ insertTA (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
     --   sub name: append implicit node and recurse
     --   final name: append new node here
     Nothing -> if isSub
-      then case insertTA ns tbl [TableNode name Nothing []] of
+      then case insertTA ns tbl [] of
              Left msg -> Left msg
-             Right r  -> Right $ nodes ++ r
+             Right r  -> Right $ nodes ++ [TableNode name Nothing r]
       else Right $ [TableNode name content []]
     Just (idx, TableNode _ c branches) -> case c of
       -- Node exists, but not explicitly defined:
@@ -91,21 +91,13 @@ insertTA (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
                Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
         else Right $ replaceItem idx (TableNode name content branches) nodes
       Just cc -> case cc of
-        -- Node explicitly defined and of type 'Table'?
-        --   sub name: recurse
-        --   final name: error out
-        Left _ -> if isSub
-          then case insertTA ns tbl branches of
-                 Left msg -> Left msg
-                 Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
-          else Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
+        -- Node explicitly defined and of type 'Table': error out
+        Left _ -> Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
         -- Node explicitly defined and of type 'TableArray'?
-        --   sub name: recurse
+        --   sub name: error out
         --   final name: append to array
         Right tArray -> if isSub
-          then case insertTA ns tbl branches of
-                 Left msg -> Left msg
-                 Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
+          then Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
           else let newNode = TableNode name (Just . Right $ tArray ++ [tbl]) branches
                in  Right $ replaceItem idx newNode nodes
   where
