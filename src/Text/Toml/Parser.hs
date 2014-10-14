@@ -32,6 +32,7 @@ module Text.Toml.Parser
 
 import Control.Applicative
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Data.Text (Text, pack, unpack)
 import Data.Attoparsec.Text hiding (signed, double)
 import Data.Time.Format (parseTime)
@@ -76,8 +77,16 @@ namedSection = do
 
 -- | Parses a table of key-value pairs.
 table :: Parser Table
-table = M.fromList <$> many (assignment <* skipBlanks)
-
+table = do
+    pairs <- many (assignment <* skipBlanks)
+    case hasDup (map fst pairs) of
+      Just k -> fail $ "Cannot redefine key " ++ (unpack k)
+      Nothing -> return $ M.fromList pairs
+  where
+    hasDup :: Ord a => [a] -> Maybe a
+    hasDup xs = dup' xs S.empty
+    dup' []     _ = Nothing
+    dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
 
 -- | Parses a table header.
 tableHeader :: Parser [Text]
