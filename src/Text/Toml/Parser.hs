@@ -22,6 +22,7 @@ module Text.Toml.Parser
   , float
   , integer
 
+  , arrayOf
   , vString
   , escSeq
   , unicodeHex

@@ -12,7 +12,18 @@ configuration files, as the first two are too heavy for that prupose,
 and the latter is underspecified.
 Toml is to configuration files, like what Markdown is for rich-text.
 
+This library is compatible with
+[v0.2.0](https://github.com/toml-lang/toml/releases/tag/v0.2.0)
+of the TOML spec..
+
 The documentation for this package may (or may not) be found on [Hackage](https://hackage.haskell.org/package/toml).
+
+
+### contributions
+
+Most welcome; by issues, discussions, pointers and pull-requests.
+This is one of the first Haskell libraries I have written, any
+feedback is much appreciated.
 
 
 ### todo
