@@ -86,24 +86,26 @@ table = do
 
 -- | Parses a table header.
 tableHeader :: Parser [Text]
-tableHeader = skipBlanks *> between (string "[") (string "]") headerValue
+tableHeader = skipBlanks *> between (char '[') (char ']') headerValue
 
 
 -- | Parses a table array header.
 tableArrayHeader :: Parser [Text]
-tableArrayHeader = skipBlanks *> between (string "[[") (string "]]") headerValue
+tableArrayHeader = skipBlanks *> between (twoChar  '[') (twoChar ']') headerValue
+  where
+    twoChar c = count 2 (char c)
 
 
 -- | Parses the value of any header, into a list of 'Text'.
 headerValue :: Parser [Text]
-headerValue = (takeWhile1 $ notInClass " \t\n[].#") `sepBy1` (string ".")
+headerValue = (takeWhile1 $ notInClass " \t\n[].#") `sepBy1` (char '.')
 
 
 -- | Parses a value-to-key assignment.
 assignment :: Parser (Text, Value)
 assignment = do
     k <- takeWhile1 $ notInClass " \t\n=#"
-    skipBlanks >> string "=" >> skipBlanks
+    skipBlanks >> char '=' >> skipBlanks
     v <- value
     return (k, v)
 
@@ -145,7 +147,7 @@ basicStr :: Parser Value
 basicStr = vString $ between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = escSeq <|> (satisfy (\c -> c /= '"' && c /= '\\'))
-    dQuote  = string "\""
+    dQuote  = char '\"'
 
 
 multiBasicStr :: Parser Value
@@ -154,7 +156,7 @@ multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = (dQuote3 <* char '\n') <|> dQuote3
     -- | Parse tripple-double quotes
-    dQuote3     = string "\"\"\""
+    dQuote3     = count 3 $ char '"'
     -- | Parse a string char, accepting escaped codes, ignoring escaped white space
     strChar     = escWhiteSpc *> (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
     -- | Parse escaped white space, if any
@@ -164,7 +166,7 @@ multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
 literalStr :: Parser Value
 literalStr = vString $ between sQuote sQuote (fmap pack $ many (notChar '\''))
   where
-    sQuote = string "'"
+    sQuote = char '\''
 
 
 multiLiteralStr :: Parser Value
@@ -173,7 +175,7 @@ multiLiteralStr = vString $ openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3
     -- | Parse the a tripple-single quote, with possibly a newline attached
     openSQuote3 = (sQuote3 <* char '\n') <|> sQuote3
     -- | Parse tripple-single quotes
-    sQuote3     = string "'''"
+    sQuote3     = count 3 $ char '\''
 
 
 datetime :: Parser Value
@@ -183,7 +185,7 @@ datetime = do
     case mt of Just t  -> return $ VDatetime t
                Nothing -> fail "parsing datetime failed"
   where
-    zulu = lexeme $ string "Z"
+    zulu = lexeme $ char 'Z'
 
 
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
@@ -213,10 +215,10 @@ arrayOf p = VArray <$> between arrayOpen arrayClose separatedValues
   where
     separatedValues = skipBlanks *> p `sepBy` commaB <* maybeTermCommaB
     commaB          = comma <* skipBlanks
-    maybeTermCommaB = (comma <|> return "") <* skipBlanks
-    comma           = lexeme $ string ","
-    arrayOpen       = lexeme $ string "["
-    arrayClose      = lexeme $ string "]"
+    maybeTermCommaB = ((comma >> return ()) <|> return ()) <* skipBlanks
+    comma           = lexeme $ char ','
+    arrayOpen       = lexeme $ char '['
+    arrayClose      = lexeme $ char ']'
 
 
 -- | Creates a 'VString' parser from a 'Text' parser (used by string parser).
