@@ -38,71 +38,41 @@ type Table = Map Text Value
 type TableArray = [Table]
 
 
--- Following insert* functions:
---   - build up branch arrays in reverse order, as they are reversed by the parser
-
--- | Insert a regular table ('Table') with the name '[Text]'.
-insertT :: [Text] -> Table -> [TableNode] -> Either String [TableNode]
-insertT [] _ _ = Left "Cannot call 'insertT' without a name."
-insertT (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
-    -- Nothing with the same name at this level?
-    --   sub name: append implicit node and recurse
-    --   final name: append new node here
-    Nothing -> if isSub
-      then case insertT ns tbl [] of
-             Left msg -> Left msg
-             Right r  -> Right $ nodes ++ [TableNode name Nothing r]
-      else Right $ nodes ++ [TableNode name content []]
-    Just (idx, TableNode _ c branches) -> case c of
-      -- Node exists, but not explicitly defined?
-      --   sub name: recurse into existing node
-      --   final name: make existing node explicit and insert content
-      Nothing -> if isSub
-        then case insertT ns tbl branches of
-               Left msg -> Left msg
-               Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
-        else Right $ replaceItem idx (TableNode name content branches) nodes
-      -- Node has already been explicitly defined: error out
-      Just _ -> Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
-  where
-    content = Just . Left $ tbl  -- 'Left' designates a 'Table'
-    isSub = ns /= []
-
-
--- | Insert a table array's table ('Table') with the name '[Text]'.
-insertTA :: [Text] -> Table -> [TableNode] -> Either String [TableNode]
-insertTA [] _ _ = Left "Cannot call 'insertTA' without a name."
-insertTA (name:ns) tbl nodes = case idxAndNodeWithName name nodes of
-    -- Nothing with the same name at this level?
-    --   sub name: append implicit node and recurse
-    --   final name: append new node here
-    Nothing -> if isSub
-      then case insertTA ns tbl [] of
-             Left msg -> Left msg
-             Right r  -> Right $ nodes ++ [TableNode name Nothing r]
-      else Right $ [TableNode name content []]
-    Just (idx, TableNode _ c branches) -> case c of
-      -- Node exists, but not explicitly defined:
-      --   sub name: recurse into existing node
-      --   final name: make existing node explicit and insert content
-      Nothing -> if isSub
-        then case insertTA ns tbl branches of
-               Left msg -> Left msg
-               Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
-        else Right $ replaceItem idx (TableNode name content branches) nodes
-      Just cc -> case cc of
-        -- Node explicitly defined and of type 'Table': error out
-        Left _ -> Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
-        -- Node explicitly defined and of type 'TableArray'?
-        --   sub name: error out
-        --   final name: append to array
-        Right tArray -> if isSub
+-- | Insert a 'Table' with the name '[Text]' into a 'TablNode', either as
+-- a 'Table' or as a 'TableArray'.
+insert :: ([Text], Table, Bool) -> [TableNode] -> Either String [TableNode]
+insert ([], _, _) _ = Left $ "Cannot call 'insert' without a name."
+insert ([name], tbl, isArray) nodes =
+    let content = Just $ if isArray then Right [tbl] else Left tbl
+    in case idxAndNodeWithName name nodes of
+      -- Nothing with the same name at this level: append new node here
+      Nothing -> Right $ nodes ++ [TableNode name content []]
+      Just (idx, TableNode _ c branches) -> case c of
+        -- Node exists, but not explicitly defined: insert content
+        Nothing -> return $ replaceItem idx (TableNode name content branches) nodes
+        Just cc -> if not isArray
+          -- Node explicitly defined and inserting a 'Table': error out
           then Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
-          else let newNode = TableNode name (Just . Right $ tArray ++ [tbl]) branches
-               in  Right $ replaceItem idx newNode nodes
-  where
-    content = Just . Right $ [tbl]  -- 'Right' designates a 'TableArray'
-    isSub = ns /= []
+          else case cc of
+            -- Node explicitly defined and of type 'Table': error out
+            Left _ -> Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
+            -- Node explicitly defined and of type 'TableArray': append to array
+            Right tArray ->
+              let newNode = TableNode name (Just . Right $ tArray ++ [tbl]) branches
+              in  Right $ replaceItem idx newNode nodes
+insert ((name:ns), tbl, isArray) nodes =
+    case idxAndNodeWithName name nodes of
+      -- Nothing with the same name at this level: append implicit node and recurse
+      Nothing -> case insert (ns, tbl, isArray) [] of
+                   Left msg -> Left msg
+                   Right r  -> Right $ nodes ++ [TableNode name Nothing r]
+      Just (idx, TableNode _ c branches) -> case c of
+        -- Node exists, but not explicitly defined: recurse into existing node
+        Nothing -> case insert (ns, tbl, isArray) branches of
+                     Left msg -> Left msg
+                     Right r  -> Right $ replaceItem idx (TableNode name c r) nodes
+        -- Node has already been explicitly defined: error out
+        Just _ -> Left $ "Cannot insert " ++ unpack name ++ ", as it is already defined."
 
 
 -- | Maybe get a tuple of the index and the node ('TableNode') from a 'TableNode' list.

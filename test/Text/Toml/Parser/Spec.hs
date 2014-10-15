@@ -9,7 +9,6 @@ import Test.Tasty.Hspec
 import Control.Applicative ((<*))
 import Data.Attoparsec.Text (parseOnly, endOfInput)
 import qualified Data.Map as M
-import Data.Text (pack)
 import Data.Time.Clock (UTCTime(..))
 import Data.Time.Calendar (Day(..))
 
@@ -22,37 +21,6 @@ tomlParserSpec = testSpec "parser tests" tomlParserSpec'
 tomlParserSpec' :: Spec
 tomlParserSpec' = do
 
-
-{-
-    it "should parse the simple 'bio' block from the example" $
-      testParser tomlDoc
-        (pack [string|
-          [owner]
-            bio = "GitHub Cofounder & CEO"
-            dob = 1979-05-27T07:32:00Z  # First class dates? Why not?
-        |])
-        [ Left ["owner"]
-        , Right ("bio", VString "GitHub Cofounder & CEO")
-        , Right ("dob", VDatetime $ UTCTime (ModifiedJulianDay 44020) 27120) ]
-
-    it "should parse the simple 'types' block from the example" $
-      testParser tomlDoc
-        (pack [string|
-          [database]
-            server = "192.168.1.1"
-            ports = [ 8001, 8001, 8002 ]
-            connection_max = 5000
-            enabled = true
-        |])
-        [ Left ["database"]
-        , Right ("server", VString "192.168.1.1")
-        , Right ("ports", VArray [ VInteger 8001
-                                 , VInteger 8001
-                                 , VInteger 8002 ])
-        , Right ("connection_max", VInteger 5000)
-        , Right ("enabled", VBoolean True) ]
-
--}
 
   describe "Parser.tomlDoc generic" $ do
 
@@ -263,6 +231,7 @@ tomlParserSpec' = do
                                \Lazy\\\n\
                                \ \"\"\"" $ VString "Quick Jumped Lazy"
 
+
   describe "Parser.literalStr" $ do
 
     it "should parse literally" $
@@ -279,6 +248,19 @@ tomlParserSpec' = do
       testParser multiLiteralStr
         "'''\nFirst newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?'''"
         $ VString "First newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?"
+
+
+  describe "Parser.datetime" $ do
+
+    it "should parse a JSON formatted datetime string in zulu timezone" $
+      testParser datetime "1979-05-27T07:32:00Z" $
+        VDatetime $ UTCTime (ModifiedJulianDay 44020) 27120
+
+    it "should not parse only dates" $
+      testParserFails datetime "1979-05-27"
+
+    it "should not parse without the Z" $
+      testParserFails datetime "1979-05-27T07:32:00"
 
 
   describe "Parser.float" $ do
@@ -354,6 +336,10 @@ tomlParserSpec' = do
     it "inside an array, all element should be of the same type" $
       testParserFails array "[1, 2.0]"
 
+    it "inside an array of arrays, this inner arrays may contain values of different types" $
+      testParser array "[[1], [2.0], ['a']]" $
+        VArray [ VArray [VInteger 1], VArray [VFloat 2.0], VArray [VString "a"] ]
+
     it "all string variants are of the same type of the same type" $
       testParser assignment "data = [\"a\", \"\"\"b\"\"\", 'c', '''d''']" $
                             ("data", VArray [ VString "a", VString "b",
@@ -364,10 +350,6 @@ tomlParserSpec' = do
 
     it "should parse terminating commas in arrays(2)" $
       testParser array "[1,2,]" $ VArray [ VInteger 1, VInteger 2 ]
-
-
-
-    -- TODO: The "Table" and "Array of Tables" sections form the Toml spec
 
 
   where testParser p str success = case parseOnly (p <* endOfInput) str of

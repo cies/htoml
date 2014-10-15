@@ -54,25 +54,19 @@ tomlDoc = do
       Right r  -> return $ TomlDoc topTable r
   where
     sectionsToNodes [] = Right []
-    sectionsToNodes ((Left  (ns, tbl)):xs) = case sectionsToNodes xs of
-                                               Left msg -> Left msg
-                                               Right r  -> mayFail $ insertT  ns tbl r
-    sectionsToNodes ((Right (ns, tbl)):xs) = case sectionsToNodes xs of
-                                               Left msg -> Left msg
-                                               Right r  -> mayFail $ insertTA ns tbl r
-    mayFail e = case e of Left msg -> Left msg
-                          Right r  -> Right r
+    sectionsToNodes (x:xs) = case sectionsToNodes xs of Left msg -> Left msg
+                                                        Right r  -> insert x r
 
 
 -- | Parses a 'Table' with header ('Left') or a 'TableArray'
 -- with header ('Right').
-namedSection :: Parser (Either ([Text], Table) ([Text], Table))
+namedSection :: Parser ([Text], Table, Bool)
 namedSection = do
     eitherHdr <- eitherP tableHeader tableArrayHeader
     skipBlanks
     tbl <- table
-    return $ case eitherHdr of Left  ns -> Left  (ns, tbl)
-                               Right ns -> Right (ns, tbl)
+    return $ case eitherHdr of Left  ns -> (ns, tbl, False)
+                               Right ns -> (ns, tbl, True)
 
 
 -- | Parses a table of key-value pairs.
@@ -182,12 +176,12 @@ multiLiteralStr = vString $ openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3
 
 datetime :: Parser Value
 datetime = do
-    d <- takeTill (== 'Z') <* zee
+    d <- takeTill (== 'Z') <* zulu
     let  mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") (unpack d)
     case mt of Just t  -> return $ VDatetime t
                Nothing -> fail "parsing datetime failed"
   where
-    zee = lexeme $ string "Z"
+    zulu = lexeme $ string "Z"
 
 
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
