@@ -31,10 +31,11 @@ module Text.Toml.Parser
   ) where
 
 
+import Prelude hiding (takeWhile, concat)
 import Control.Applicative
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, pack, unpack, concat)
 import Data.Attoparsec.Text hiding (signed, double)
 import Data.Time.Format (parseTime)
 import System.Locale (defaultTimeLocale, iso8601DateFormat)
@@ -158,11 +159,11 @@ multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
     -- | Parse a string char, accepting escaped codes, ignoring escaped white space
     strChar     = escWhiteSpc *> (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
     -- | Parse escaped white space, if any
-    escWhiteSpc = many $ char '\\' *> char '\n' *> many (spc <|> char '\n')
+    escWhiteSpc = many $ char '\\' >> char '\n' >> takeWhile (\c -> isSpc c || c == '\n')
 
 
 literalStr :: Parser Value
-literalStr = vString $ between sQuote sQuote (fmap pack $ many (notChar '\''))
+literalStr = vString $ between sQuote sQuote (takeWhile (/= '\''))
   where
     sQuote = char '\''
 
@@ -191,11 +192,11 @@ float :: Parser Value
 float = VFloat <$> (lexeme $ signed unsignedDouble)
   where
     unsignedDouble = do
-      let numStr = many1 . satisfy $ (\c -> c >= '0' && c <= '9')
+      let numStr = takeWhile1 (\c -> c >= '0' && c <= '9')
       n <- numStr
       char '.'  -- do not use the period lexeme (that allows tailing whitespace)
       d <- numStr
-      return (read $ n ++ "." ++ d)
+      return . read . unpack . concat $ [n, ".", d]
 
 
 integer :: Parser Value
@@ -263,18 +264,18 @@ signed p = (negate <$> (char '-' *> p)) <|> p
 skipBlanks :: Parser ()
 skipBlanks = skipMany blank
   where
-    blank = (spc >> return ()) <|> comment <|> endOfLine
-    comment = ( char '#' *> takeTill (== '\n') ) >> return ()
+    blank   = (takeWhile1 isSpc >> return ()) <|> comment <|> endOfLine
+    comment = (char '#' >> takeTill (== '\n')) >> return ()
 
 
 -- | Adds matching of tailing whitespaces to parser 'p'.
 lexeme :: Parser a -> Parser a
-lexeme p = p <* many spc
+lexeme p = p <* takeWhile isSpc
 
 
--- | Parser for a whitespace char, tab or space, according to spec.
-spc :: Parser Char
-spc = char ' ' <|> char '\t'
+-- | Results in 'True' for whitespace chars, tab or space, according to spec.
+isSpc :: Char -> Bool
+isSpc c = c == ' ' || c == '\t'
 
 
 -- | Prefixes a parser 'a' and suffixes a parser 'b' to parser 'p'.
