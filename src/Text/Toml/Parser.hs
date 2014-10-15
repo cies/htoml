@@ -134,9 +134,7 @@ array = (arrayOf array    <?> "array of arrays")
 
 
 boolean :: Parser Value
-boolean = VBoolean <$> (true *> return True <|> false *> return False)
-  where
-    [true, false] = map (lexeme . string) ["true", "false"]
+boolean = VBoolean <$> (lexeme "true" *> return True <|> lexeme "false" *> return False)
 
 
 anyStr :: Parser Value
