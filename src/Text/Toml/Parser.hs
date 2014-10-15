@@ -269,9 +269,7 @@ skipBlanks = skipMany blank
 
 -- | Adds matching of tailing whitespaces to parser 'p'.
 lexeme :: Parser a -> Parser a
-lexeme p = do x <- p
-              many spc
-              return x
+lexeme p = p <* many spc
 
 
 -- | Parser for a whitespace char, tab or space, according to spec.
