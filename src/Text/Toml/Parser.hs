@@ -82,6 +82,7 @@ table = do
     dup' []     _ = Nothing
     dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
 
+
 -- | Parses a table header.
 tableHeader :: Parser [Text]
 tableHeader = skipBlanks *> between (string "[") (string "]") headerValue

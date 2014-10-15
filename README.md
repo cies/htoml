@@ -5,9 +5,11 @@ A [TOML](https://github.com/mojombo/toml) parser library in [Haskell](http://has
 
 TOML is the obvious, minimal configuration language by
 [Tom Preston-Werner](https://github.com/mojombo).
-It is an alternative to the XML, YAML and INI formats, as the first two are
-too heavy for the prupose of a configuration file, and the latter is
-underspecified (arguably not even a standard).
+It is an alternative to the [XML](http://www.w3.org/TR/REC-xml/),
+[YAML](http://www.yaml.org/spec/1.2/spec.html) and
+[INI](http://en.wikipedia.org/wiki/INI_file) formats for the purpose of
+configuration files, as the first two are too heavy for that prupose,
+and the latter is underspecified.
 Toml is to configuration files, like what Markdown is for rich-text.
 
 The documentation for this package may (or may not) be found on [Hackage](https://hackage.haskell.org/package/toml).
