@@ -125,30 +125,3 @@ data Value = VString   Text
            | VDatetime UTCTime
            | VArray    [Value]
   deriving (Eq, Ord, Show)
-
-
--- | * Restriction the value types of array elements.
---
--- The specifications below restrict the values to be
--- of the same type within an 'Array'.
---
--- The restriction is only enforced at construction,
--- in order to to complicate the types of the underlaying
--- data structures ('Table', etc.).
-
-newtype RestrictedValue a = RV {freeValue :: Value}
-
-restrictString :: Text -> RestrictedValue Text
-restrictString = RV . VString
-restrictInteger :: Integer -> RestrictedValue Integer
-restrictInteger = RV . VInteger
-restrictFloat :: Double -> RestrictedValue Double
-restrictFloat = RV . VFloat
-restrictBoolean :: Bool -> RestrictedValue Bool
-restrictBoolean = RV . VBoolean
-restrictDatetime :: UTCTime -> RestrictedValue UTCTime
-restrictDatetime = RV . VDatetime
-
-data Array
-restrictArray :: [RestrictedValue a] -> RestrictedValue Array
-restrictArray = RV . VArray . map freeValue

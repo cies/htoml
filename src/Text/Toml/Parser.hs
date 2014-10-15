@@ -112,7 +112,7 @@ assignment = do
     return (k, v)
 
 
--- | Parser for a value
+-- | Parser for a value.
 value :: Parser Value
 value = (array    <?> "array")
     <|> (boolean  <?> "boolean")
@@ -126,16 +126,13 @@ value = (array    <?> "array")
 -- | * Toml value parsers
 --
 
-
 array :: Parser Value
-array = VArray <$> between arrayOpen arrayClose separatedValues
-  where
-    separatedValues = skipBlanks *> value `sepBy` commaB <* maybeTermCommaB
-    commaB          = comma <* skipBlanks
-    maybeTermCommaB = (comma <|> return "") <* skipBlanks
-    comma           = lexeme $ string ","
-    arrayOpen       = lexeme $ string "["
-    arrayClose      = lexeme $ string "]"
+array = (arrayOf array    <?> "array of arrays")
+    <|> (arrayOf boolean  <?> "array of booleans")
+    <|> (arrayOf anyStr   <?> "array of strings")
+    <|> (arrayOf datetime <?> "array of datetimes")
+    <|> (arrayOf float    <?> "array of floats")
+    <|> (arrayOf integer  <?> "array of integers")
 
 
 boolean :: Parser Value
@@ -193,7 +190,7 @@ datetime = do
     zee = lexeme $ string "Z"
 
 
--- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec
+-- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
 float :: Parser Value
 float = VFloat <$> (lexeme $ signed unsignedDouble)
   where
@@ -211,15 +208,27 @@ integer = VInteger <$> (lexeme $ signed decimal)
 
 
 --
--- Utility functions
+-- * Utility functions
 --
 
--- | Creates a 'VString' parser from a 'Text' parser (used by string parser)
+-- | Parses the elements of an array, while restricting them to a certain type.
+arrayOf :: Parser Value -> Parser Value
+arrayOf p = VArray <$> between arrayOpen arrayClose separatedValues
+  where
+    separatedValues = skipBlanks *> p `sepBy` commaB <* maybeTermCommaB
+    commaB          = comma <* skipBlanks
+    maybeTermCommaB = (comma <|> return "") <* skipBlanks
+    comma           = lexeme $ string ","
+    arrayOpen       = lexeme $ string "["
+    arrayClose      = lexeme $ string "]"
+
+
+-- | Creates a 'VString' parser from a 'Text' parser (used by string parser).
 vString :: Parser Text -> Parser Value
 vString p = VString <$> lexeme p
 
 
--- | Parser for escape sequences
+-- | Parser for escape sequences.
 escSeq :: Parser Char
 escSeq = char '\\' *> escSeqChar
   where
@@ -236,7 +245,7 @@ escSeq = char '\\' *> escSeqChar
               <?> "escape character"
 
 
--- | Parser for unicode hexadecimal values of length 'n'
+-- | Parser for unicode hexadecimal values of length 'n'.
 unicodeHex :: Int -> Parser Char
 unicodeHex n = do
     h <- count n (satisfy isHex)
@@ -247,14 +256,14 @@ unicodeHex n = do
     maxChar = fromEnum (maxBound :: Char)
 
 
--- | Parser for negation signs (minusses)
+-- | Parser for negation signs (minusses).
 --
 -- Attoparsec 'signed' allows a "+" prefix; reimplemented according to Toml spec.
 signed :: Num a => Parser a -> Parser a
 signed p = (negate <$> (char '-' *> p)) <|> p
 
 
--- | Parses the (rest of the) line including an EOF, whitespace and comments
+-- | Parses the (rest of the) line including an EOF, whitespace and comments.
 skipBlanks :: Parser ()
 skipBlanks = skipMany blank
   where
@@ -262,18 +271,18 @@ skipBlanks = skipMany blank
     comment = ( char '#' *> takeTill (== '\n') ) >> return ()
 
 
--- | Adds matching of tailing whitespaces to parser 'p'
+-- | Adds matching of tailing whitespaces to parser 'p'.
 lexeme :: Parser a -> Parser a
 lexeme p = do x <- p
               many spc
               return x
 
 
--- | Parser for a whitespace char, tab or space, according to spec
+-- | Parser for a whitespace char, tab or space, according to spec.
 spc :: Parser Char
 spc = char ' ' <|> char '\t'
 
 
--- | Prefixes a parser 'a' and suffixes a parser 'b' to parser 'p'
+-- | Prefixes a parser 'a' and suffixes a parser 'b' to parser 'p'.
 between :: Parser a -> Parser b -> Parser p -> Parser p
 between a b p = do { a; e <- p; b; return e }
