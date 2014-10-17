@@ -1,0 +1,194 @@
+# This is a TOML document. Boom.
+
+title = "TOML Example"
+
+[owner]
+name = "Tom Preston-Werner"
+organization = "GitHub"
+bio = "GitHub Cofounder & CEO\nLikes tater tots and beer."
+dob = 1979-05-27T07:32:00Z # First class dates? Why not?
+
+[database]
+server = "192.168.1.1"
+ports = [ 8001, 8001, 8002 ]
+connection_max = 5000
+enabled = true
+
+[servers1]
+
+  # You can indent as you please. Tabs or spaces. TOML don't care.
+  [servers.alpha]
+  ip = "10.0.0.1"
+  dc = "eqdc10"
+
+  [servers.beta]
+  ip = "10.0.0.2"
+  dc = "eqdc10"
+  country = "中国" # This should be parsed as UTF-8
+
+[clients]
+data = [ ["gamma", "delta"], [1, 2] ] # just an update to make sure parsers support it
+
+
+# Line breaks are OK when inside arrays
+hosts = [
+  "alpha",
+  "omega"
+]
+
+# Products
+
+  [[products]]
+  name = "Hammer"
+  sku = 738594937
+
+  [[products]]
+  name = "Nail"
+  sku = 284758393
+  color = "gray"
+
+
+# This is a TOML document. Boom.
+
+[owner2]
+name = "Tom Preston-Werner"
+organization = "GitHub"
+bio = "GitHub Cofounder & CEO\nLikes tater tots and beer."
+dob = 1979-05-27T07:32:00Z # First class dates? Why not?
+
+[database2]
+server = "192.168.1.1"
+ports = [ 8001, 8001, 8002 ]
+connection_max = 5000
+enabled = true
+
+[servers2]
+
+  # You can indent as you please. Tabs or spaces. TOML don't care.
+  [servers.alpha2]
+  ip = "10.0.0.1"
+  dc = "eqdc10"
+
+  [servers.beta2]
+  ip = "10.0.0.2"
+  dc = "eqdc10"
+  country = "中国" # This should be parsed as UTF-8
+
+[clients2]
+data = [ ["gamma", "delta"], [1, 2] ] # just an update to make sure parsers support it
+
+
+# Line breaks are OK when inside arrays
+hosts = [
+  "alpha",
+  "omega"
+]
+
+# Products
+
+  [[products2]]
+  name = "Hammer"
+  sku = 738594937
+
+  [[products2]]
+  name = "Nail"
+  sku = 284758393
+  color = "gray"
+
+
+
+# This is a TOML document. Boom.
+
+[owner3]
+name = "Tom Preston-Werner"
+organization = "GitHub"
+bio = "GitHub Cofounder & CEO\nLikes tater tots and beer."
+dob = 1979-05-27T07:32:00Z # First class dates? Why not?
+
+[database3]
+server = "192.168.1.1"
+ports = [ 8001, 8001, 8002 ]
+connection_max = 5000
+enabled = true
+
+[servers3]
+
+  # You can indent as you please. Tabs or spaces. TOML don't care.
+  [servers.alpha3]
+  ip = "10.0.0.1"
+  dc = "eqdc10"
+
+  [servers.beta3]
+  ip = "10.0.0.2"
+  dc = "eqdc10"
+  country = "中国" # This should be parsed as UTF-8
+
+[clients3]
+data = [ ["gamma", "delta"], [1, 3] ] # just an update to make sure parsers support it
+
+
+# Line breaks are OK when inside arrays
+hosts = [
+  "alpha",
+  "omega"
+]
+
+# Products
+
+  [[products3]]
+  name = "Hammer"
+  sku = 738594937
+
+  [[products3]]
+  name = "Nail"
+  sku = 284758393
+  color = "gray"
+
+
+
+# This is a TOML document. Boom.
+
+[owner4]
+name = "Tom Preston-Werner"
+organization = "GitHub"
+bio = "GitHub Cofounder & CEO\nLikes tater tots and beer."
+dob = 1979-05-27T07:32:00Z # First class dates? Why not?
+
+[database4]
+server = "192.168.1.1"
+ports = [ 8001, 8001, 8002 ]
+connection_max = 5000
+enabled = true
+
+[servers4]
+
+  # You can indent as you please. Tabs or spaces. TOML don't care.
+  [servers.alpha4]
+  ip = "10.0.0.1"
+  dc = "eqdc10"
+
+  [servers.beta4]
+  ip = "10.0.0.2"
+  dc = "eqdc10"
+  country = "中国" # This should be parsed as UTF-8
+
+[clients4]
+data = [ ["gamma", "delta"], [1, 4] ] # just an update to make sure parsers support it
+
+
+# Line breaks are OK when inside arrays
+hosts = [
+  "alpha",
+  "omega"
+]
+
+# Products
+
+  [[products4]]
+  name = "Hammer"
+  sku = 738594937
+
+  [[products4]]
+  name = "Nail"
+  sku = 284758393
+  color = "gray"

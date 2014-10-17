@@ -19,6 +19,16 @@ of the TOML spec..
 The documentation for this package may (or may not) be found on [Hackage](https://hackage.haskell.org/package/toml).
 
 
+### tests and benchmarks
+
+The test suite is build by default, `cabal configure --disable-tests` disables them.
+The benchmark suite is not run by default, `cabal configure --enable-benchmarks` enables them.
+
+With `cabal build` both of these suites are build as executables and
+put somewhere in `dist/`. Passing `--help` to them will reveal their
+options.
+
+
 ### contributions
 
 Most welcome; by issues, discussions, pointers and pull-requests.

@@ -14,7 +14,7 @@ ports = [ 8001, 8001, 8002 ]
 connection_max = 5000
 enabled = true
 
-[servers]
+[servers1]
 
   # You can indent as you please. Tabs or spaces. TOML don't care.
   [servers.alpha]

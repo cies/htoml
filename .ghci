@@ -1,7 +1,9 @@
+import Prelude hiding (readFile)
 import Control.Applicative
 import Data.Attoparsec.Text
 import Data.Map
 import Data.Text
+import Data.Text.IO (readFile)
 
 :seti -XOverloadedStrings
 :set prompt "> "
