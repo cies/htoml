@@ -1,11 +1,11 @@
 name:              toml
-version:           0.1.3.1
+version:           0.2.0.0
 synopsis:          Toml is an obvious and minimal configuration file format.
--- description:
+description:       This version of uses Attoparsec, but soon we will likely switch to Parsec.
 homepage:          https://github.com/seliopou/toml
 license:           BSD3
 license-file:      LICENSE
-author:            Spiros Eliopoulos
+author:            Spiros Eliopoulos, Cies Breijs
 category:          Text
 build-type:        Simple
 cabal-version:     >= 1.10
