@@ -38,6 +38,7 @@ feedback is much appreciated.
 
 ### todo
 
+* Use Parsec instead of Attoparsec
 * Add more documentation
 * Add more tests (maybe find a more mature TOML parser and steal their tests)
 * Add property tests with QuickCheck (the internet sais it's possible for parsers)
@@ -49,6 +50,7 @@ feedback is much appreciated.
 
 ### tada
 
+* Small benchmark suite
 * Parser fails on mix-type arrays (as per spec)
 * Haddock docs
 * Complete the tests by covering the last two sections of the TOML spec (Tables)
