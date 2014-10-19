@@ -32,11 +32,12 @@ module Text.Toml.Parser
 
 
 import Prelude hiding (takeWhile, concat)
-import Control.Applicative
+import Control.Applicative hiding (many, (<|>))
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Text (Text, pack, unpack, concat)
-import Data.Attoparsec.Text hiding (signed, double)
+import Text.Parsec
+import Text.Parsec.Text
 import Data.Time.Format (parseTime)
 import System.Locale (defaultTimeLocale, iso8601DateFormat)
 import Numeric (readHex)
@@ -50,7 +51,7 @@ tomlDoc = do
     topTable <- skipBlanks *> table
     skipBlanks
     namedSections <- many namedSection
-    endOfInput  -- ensures this input is completely consumed
+    eof  -- ensures this input is completely consumed
     case sectionsToNodes (reverse namedSections) of
       Left msg -> fail msg
       Right r  -> return $ TomlDoc topTable r
@@ -64,7 +65,7 @@ tomlDoc = do
 -- with header ('Right').
 namedSection :: Parser ([Text], Table, Bool)
 namedSection = do
-    eitherHdr <- eitherP tableHeader tableArrayHeader
+    eitherHdr <- (Left <$> tableHeader) <|> (Right <$> tableArrayHeader)
     skipBlanks
     tbl <- table
     return $ case eitherHdr of Left  ns -> (ns, tbl, False)
@@ -99,17 +100,21 @@ tableArrayHeader = skipBlanks *> between (twoChar  '[') (twoChar ']') headerValu
 
 -- | Parses the value of any header, into a list of 'Text'.
 headerValue :: Parser [Text]
-headerValue = (takeWhile1 $ notInClass " \t\n[].#") `sepBy1` (char '.')
-
+headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
+  where
+    headerNameChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
+                                    c /= '[' && c /= ']'  && c /= '.'  && c /= '#')
 
 -- | Parses a value-to-key assignment.
 assignment :: Parser (Text, Value)
 assignment = do
-    k <- takeWhile1 $ notInClass " \t\n=#"
+    k <- pack <$> many1 keyChar
     skipBlanks >> char '=' >> skipBlanks
     v <- value
     return (k, v)
-
+  where
+    keyChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
+                             c /= '=' && c /= '#')
 
 -- | Parser for a value.
 value :: Parser Value
@@ -135,7 +140,8 @@ array = (arrayOf array    <?> "array of arrays")
 
 
 boolean :: Parser Value
-boolean = VBoolean <$> (lexeme "true" *> return True <|> lexeme "false" *> return False)
+boolean = VBoolean <$> ( (lexeme . string $ "true")  *> return True
+                     <|> (lexeme . string $ "false") *> return False )
 
 
 anyStr :: Parser Value
@@ -159,11 +165,11 @@ multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
     -- | Parse a string char, accepting escaped codes, ignoring escaped white space
     strChar     = escWhiteSpc *> (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
     -- | Parse escaped white space, if any
-    escWhiteSpc = many $ char '\\' >> char '\n' >> takeWhile (\c -> isSpc c || c == '\n')
+    escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
 
 literalStr :: Parser Value
-literalStr = vString $ between sQuote sQuote (takeWhile (/= '\''))
+literalStr = vString $ between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
   where
     sQuote = char '\''
 
@@ -179,8 +185,8 @@ multiLiteralStr = vString $ openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3
 
 datetime :: Parser Value
 datetime = do
-    d <- takeTill (== 'Z') <* zulu
-    let  mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") (unpack d)
+    d <- manyTill anyChar (satisfy (== 'Z')) <* zulu
+    let  mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") d
     case mt of Just t  -> return $ VDatetime t
                Nothing -> fail "parsing datetime failed"
   where
@@ -192,7 +198,7 @@ float :: Parser Value
 float = VFloat <$> (lexeme $ signed unsignedDouble)
   where
     unsignedDouble = do
-      let numStr = takeWhile1 (\c -> c >= '0' && c <= '9')
+      let numStr = pack <$> many1 (satisfy (\c -> c >= '0' && c <= '9'))
       n <- numStr
       char '.'  -- do not use the period lexeme (that allows tailing whitespace)
       d <- numStr
@@ -200,7 +206,7 @@ float = VFloat <$> (lexeme $ signed unsignedDouble)
 
 
 integer :: Parser Value
-integer = VInteger <$> (lexeme $ signed decimal)
+integer = VInteger <$> (lexeme . signed $ read <$> (many1 digit))
 
 
 
@@ -264,13 +270,13 @@ signed p = (negate <$> (char '-' *> p)) <|> p
 skipBlanks :: Parser ()
 skipBlanks = skipMany blank
   where
-    blank   = (takeWhile1 isSpc >> return ()) <|> comment <|> endOfLine
-    comment = (char '#' >> takeTill (== '\n')) >> return ()
+    blank   = ((many1 $ satisfy isSpc) >> return ()) <|> comment <|> eol
+    comment = (char '#' >> (many $ satisfy (/= '\n'))) >> return ()
 
 
 -- | Adds matching of tailing whitespaces to parser 'p'.
 lexeme :: Parser a -> Parser a
-lexeme p = p <* takeWhile isSpc
+lexeme p = p <* (many $ satisfy isSpc)
 
 
 -- | Results in 'True' for whitespace chars, tab or space, according to spec.
@@ -278,6 +284,10 @@ isSpc :: Char -> Bool
 isSpc c = c == ' ' || c == '\t'
 
 
--- | Prefixes a parser 'a' and suffixes a parser 'b' to parser 'p'.
-between :: Parser a -> Parser b -> Parser p -> Parser p
-between a b p = do { a; e <- p; b; return e }
+eol :: Parser ()
+eol = satisfy (== '\n') >> return ()
+
+
+-- -- | Prefixes a parser 'a' and suffixes a parser 'b' to parser 'p'.
+-- between :: Parser a -> Parser b -> Parser p -> Parser p
+-- between a b p = do { a; e <- p; b; return e }

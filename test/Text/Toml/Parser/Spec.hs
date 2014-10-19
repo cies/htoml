@@ -6,7 +6,7 @@ import Test.Tasty (TestTree)
 import Test.Tasty.Hspec
 
 import Control.Applicative ((<*))
-import Data.Attoparsec.Text (parseOnly, endOfInput)
+import Text.Parsec
 import qualified Data.Map as M
 import Data.Time.Clock (UTCTime(..))
 import Data.Time.Calendar (Day(..))
@@ -351,9 +351,9 @@ tomlParserSpec' = do
       testParser array "[1,2,]" $ VArray [ VInteger 1, VInteger 2 ]
 
 
-  where testParser p str success = case parseOnly (p <* endOfInput) str of
+  where testParser p str success = case parse (p <* eof) "test" str of
                                      Left  _ -> False
                                      Right x -> x == success
-        testParserFails p str    = case parseOnly (p <* endOfInput) str of
+        testParserFails p str    = case parse (p <* eof) "test" str of
                                      Left  _ -> True
                                      Right _ -> False
