@@ -48,10 +48,13 @@ import Text.Toml.Types
 -- | Parses a complete document formatted according to the TOML spec.
 tomlDoc :: Parser TomlDoc
 tomlDoc = do
-    topTable <- skipBlanks *> table
     skipBlanks
+    -- topTable <- table
+    topTable <- return M.empty
+    --skipBlanks
     namedSections <- many namedSection
-    eof  -- ensures this input is completely consumed
+    skipBlanks
+    --eof  -- ensures this input is completely consumed
     case sectionsToNodes (reverse namedSections) of
       Left msg -> fail msg
       Right r  -> return $ TomlDoc topTable r
@@ -65,7 +68,7 @@ tomlDoc = do
 -- with header ('Right').
 namedSection :: Parser ([Text], Table, Bool)
 namedSection = do
-    eitherHdr <- (Left <$> tableHeader) <|> (Right <$> tableArrayHeader)
+    eitherHdr <- try (Left <$> tableHeader) <|> try (Right <$> tableArrayHeader)
     skipBlanks
     tbl <- table
     return $ case eitherHdr of Left  ns -> (ns, tbl, False)
@@ -77,11 +80,11 @@ table :: Parser Table
 table = do
     pairs <- many (assignment <* skipBlanks)
     case hasDup (map fst pairs) of
-      Just k -> fail $ "Cannot redefine key " ++ (unpack k)
+      Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
       Nothing -> return $ M.fromList pairs
   where
-    hasDup :: Ord a => [a] -> Maybe a
-    hasDup xs = dup' xs S.empty
+    hasDup        :: Ord a => [a] -> Maybe a
+    hasDup xs     = dup' xs S.empty
     dup' []     _ = Nothing
     dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
 
@@ -118,12 +121,12 @@ assignment = do
 
 -- | Parser for a value.
 value :: Parser Value
-value = (array    <?> "array")
-    <|> (boolean  <?> "boolean")
-    <|> (anyStr   <?> "string")
-    <|> (datetime <?> "datetime")
-    <|> (float    <?> "float")
-    <|> (integer  <?> "integer")
+value = (try array    <?> "array")
+    <|> (try boolean  <?> "boolean")
+    <|> (try anyStr   <?> "string")
+    <|> (try datetime <?> "datetime")
+    <|> (try float    <?> "float")
+    <|> (try integer  <?> "integer")
 
 
 --
@@ -131,12 +134,12 @@ value = (array    <?> "array")
 --
 
 array :: Parser Value
-array = (arrayOf array    <?> "array of arrays")
-    <|> (arrayOf boolean  <?> "array of booleans")
-    <|> (arrayOf anyStr   <?> "array of strings")
-    <|> (arrayOf datetime <?> "array of datetimes")
-    <|> (arrayOf float    <?> "array of floats")
-    <|> (arrayOf integer  <?> "array of integers")
+array = (try (arrayOf array)    <?> "array of arrays")
+    <|> (try (arrayOf boolean)  <?> "array of booleans")
+    <|> (try (arrayOf anyStr)   <?> "array of strings")
+    <|> (try (arrayOf datetime) <?> "array of datetimes")
+    <|> (try (arrayOf float)    <?> "array of floats")
+    <|> (try (arrayOf integer)  <?> "array of integers")
 
 
 boolean :: Parser Value
@@ -145,7 +148,7 @@ boolean = VBoolean <$> ( (lexeme . string $ "true")  *> return True
 
 
 anyStr :: Parser Value
-anyStr = multiBasicStr <|> basicStr <|> multiLiteralStr <|> literalStr
+anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
 
 
 basicStr :: Parser Value

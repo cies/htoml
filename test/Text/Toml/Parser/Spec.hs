@@ -15,11 +15,7 @@ import Text.Toml.Parser
 
 
 tomlParserSpec :: IO TestTree
-tomlParserSpec = testSpec "parser tests" tomlParserSpec'
-
-tomlParserSpec' :: Spec
-tomlParserSpec' = do
-
+tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
   describe "Parser.tomlDoc generic" $ do
 

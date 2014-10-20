@@ -9,7 +9,7 @@ import Text.Toml.Parser.Spec
 main :: IO ()
 main = do
   parserSpec <- tomlParserSpec
-  defaultMain $ testGroup "All parser tests"
+  defaultMain $ testGroup ""
     [ parserSpec
       --, quickCheckSuite
       -- A QuickCheck suite for a parser is possible. The internet knows.
