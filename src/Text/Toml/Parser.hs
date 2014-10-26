@@ -32,7 +32,7 @@ module Text.Toml.Parser
 
 
 import Prelude hiding (takeWhile, concat)
-import Control.Applicative hiding (many, (<|>))
+import Control.Applicative hiding (many, (<|>), optional)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Text (Text, pack, unpack, concat)
@@ -49,12 +49,9 @@ import Text.Toml.Types
 tomlDoc :: Parser TomlDoc
 tomlDoc = do
     skipBlanks
-    -- topTable <- table
-    topTable <- return M.empty
-    --skipBlanks
+    topTable <- table
     namedSections <- many namedSection
-    skipBlanks
-    --eof  -- ensures this input is completely consumed
+    eof  -- ensures this input is completely consumed
     case sectionsToNodes (reverse namedSections) of
       Left msg -> fail msg
       Right r  -> return $ TomlDoc topTable r
@@ -64,21 +61,10 @@ tomlDoc = do
                                                         Right r  -> insert x r
 
 
--- | Parses a 'Table' with header ('Left') or a 'TableArray'
--- with header ('Right').
-namedSection :: Parser ([Text], Table, Bool)
-namedSection = do
-    eitherHdr <- try (Left <$> tableHeader) <|> try (Right <$> tableArrayHeader)
-    skipBlanks
-    tbl <- table
-    return $ case eitherHdr of Left  ns -> (ns, tbl, False)
-                               Right ns -> (ns, tbl, True)
-
-
 -- | Parses a table of key-value pairs.
 table :: Parser Table
 table = do
-    pairs <- many (assignment <* skipBlanks)
+    pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
     case hasDup (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
       Nothing -> return $ M.fromList pairs
@@ -89,14 +75,26 @@ table = do
     dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
 
 
+-- | Parses a 'Table' with header ('Left') or a 'TableArray'
+-- with header ('Right').
+namedSection :: Parser ([Text], Table, Bool)
+namedSection = do
+    eitherHdr <- try (Left <$> tableHeader) <|> try (Right <$> tableArrayHeader)
+    skipBlanks
+    tbl <- table
+    skipBlanks
+    return $ case eitherHdr of Left  ns -> (ns, tbl, False)
+                               Right ns -> (ns, tbl, True)
+
+
 -- | Parses a table header.
 tableHeader :: Parser [Text]
-tableHeader = skipBlanks *> between (char '[') (char ']') headerValue
+tableHeader = between (char '[') (char ']') headerValue
 
 
 -- | Parses a table array header.
 tableArrayHeader :: Parser [Text]
-tableArrayHeader = skipBlanks *> between (twoChar  '[') (twoChar ']') headerValue
+tableArrayHeader = between (twoChar  '[') (twoChar ']') headerValue
   where
     twoChar c = count 2 (char c)
 
@@ -108,6 +106,7 @@ headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
     headerNameChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
                                     c /= '[' && c /= ']'  && c /= '.'  && c /= '#')
 
+
 -- | Parses a value-to-key assignment.
 assignment :: Parser (Text, Value)
 assignment = do
@@ -116,8 +115,10 @@ assignment = do
     v <- value
     return (k, v)
   where
+    -- TODO: Follow the spec, e.g.: only first char cannot be '['.
     keyChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                             c /= '=' && c /= '#')
+                             c /= '=' && c /= '#'  && c /= '[')
+
 
 -- | Parser for a value.
 value :: Parser Value
@@ -143,8 +144,8 @@ array = (try (arrayOf array)    <?> "array of arrays")
 
 
 boolean :: Parser Value
-boolean = VBoolean <$> ( (lexeme . string $ "true")  *> return True
-                     <|> (lexeme . string $ "false") *> return False )
+boolean = VBoolean <$> ( (try . lexeme . string $ "true")  *> return True
+                     <|> (try . lexeme . string $ "false") *> return False )
 
 
 anyStr :: Parser Value
@@ -154,7 +155,7 @@ anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try lite
 basicStr :: Parser Value
 basicStr = vString $ between dQuote dQuote (fmap pack $ many strChar)
   where
-    strChar = escSeq <|> (satisfy (\c -> c /= '"' && c /= '\\'))
+    strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
 
 
@@ -162,7 +163,7 @@ multiBasicStr :: Parser Value
 multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
-    openDQuote3 = (dQuote3 <* char '\n') <|> dQuote3
+    openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
     -- | Parse tripple-double quotes
     dQuote3     = count 3 $ char '"'
     -- | Parse a string char, accepting escaped codes, ignoring escaped white space
@@ -181,19 +182,17 @@ multiLiteralStr :: Parser Value
 multiLiteralStr = vString $ openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3)
   where
     -- | Parse the a tripple-single quote, with possibly a newline attached
-    openSQuote3 = (sQuote3 <* char '\n') <|> sQuote3
+    openSQuote3 = try (sQuote3 <* char '\n') <|> try sQuote3
     -- | Parse tripple-single quotes
-    sQuote3     = count 3 $ char '\''
+    sQuote3     = try . count 3 . char $ '\''
 
 
 datetime :: Parser Value
 datetime = do
-    d <- manyTill anyChar (satisfy (== 'Z')) <* zulu
+    d <- manyTill anyChar (try $ char 'Z')
     let  mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") d
     case mt of Just t  -> return $ VDatetime t
                Nothing -> fail "parsing datetime failed"
-  where
-    zulu = lexeme $ char 'Z'
 
 
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
@@ -221,10 +220,8 @@ integer = VInteger <$> (lexeme . signed $ read <$> (many1 digit))
 arrayOf :: Parser Value -> Parser Value
 arrayOf p = VArray <$> between arrayOpen arrayClose separatedValues
   where
-    separatedValues = skipBlanks *> p `sepBy` commaB <* maybeTermCommaB
-    commaB          = comma <* skipBlanks
-    maybeTermCommaB = ((comma >> return ()) <|> return ()) <* skipBlanks
-    comma           = lexeme $ char ','
+    separatedValues = skipBlanks *> p `sepBy` comma <* (comma <|> skipBlanks)
+    comma           = skipBlanks >> char ',' >> skipBlanks >> return ()
     arrayOpen       = lexeme $ char '['
     arrayClose      = lexeme $ char ']'
 
@@ -238,16 +235,16 @@ vString p = VString <$> lexeme p
 escSeq :: Parser Char
 escSeq = char '\\' *> escSeqChar
   where
-    escSeqChar =  char '"'  *> return '"'
-              <|> char '\\' *> return '\\'
-              <|> char '/'  *> return '/'
-              <|> char 'b'  *> return '\b'
-              <|> char 't'  *> return '\t'
-              <|> char 'n'  *> return '\n'
-              <|> char 'f'  *> return '\f'
-              <|> char 'r'  *> return '\r'
-              <|> char 'u'  *> unicodeHex 4
-              <|> char 'U'  *> unicodeHex 8
+    escSeqChar =  try (char '"')  *> return '"'
+              <|> try (char '\\') *> return '\\'
+              <|> try (char '/')  *> return '/'
+              <|> try (char 'b')  *> return '\b'
+              <|> try (char 't')  *> return '\t'
+              <|> try (char 'n')  *> return '\n'
+              <|> try (char 'f')  *> return '\f'
+              <|> try (char 'r')  *> return '\r'
+              <|> try (char 'u')  *> unicodeHex 4
+              <|> try (char 'U')  *> unicodeHex 8
               <?> "escape character"
 
 
@@ -266,14 +263,14 @@ unicodeHex n = do
 --
 -- Attoparsec 'signed' allows a "+" prefix; reimplemented according to Toml spec.
 signed :: Num a => Parser a -> Parser a
-signed p = (negate <$> (char '-' *> p)) <|> p
+signed p = try (negate <$> (char '-' *> p)) <|> try p
 
 
 -- | Parses the (rest of the) line including an EOF, whitespace and comments.
 skipBlanks :: Parser ()
 skipBlanks = skipMany blank
   where
-    blank   = ((many1 $ satisfy isSpc) >> return ()) <|> comment <|> eol
+    blank   = try ((many1 $ satisfy isSpc) >> return ()) <|> try comment <|> try eol
     comment = (char '#' >> (many $ satisfy (/= '\n'))) >> return ()
 
 
@@ -287,10 +284,6 @@ isSpc :: Char -> Bool
 isSpc c = c == ' ' || c == '\t'
 
 
+-- | Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n'.
 eol :: Parser ()
 eol = satisfy (== '\n') >> return ()
-
-
--- -- | Prefixes a parser 'a' and suffixes a parser 'b' to parser 'p'.
--- between :: Parser a -> Parser b -> Parser p -> Parser p
--- between a b p = do { a; e <- p; b; return e }

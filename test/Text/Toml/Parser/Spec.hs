@@ -213,10 +213,10 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
       testParser multiBasicStr "\"\"\"One\nTwo\"\"\"" $ VString "One\nTwo"
 
     it "should parse with escaped newlines" $
-      testParser multiBasicStr "\"\"\"One\\nTwo\"\"\"" $ VString "One\nTwo"
+      testParser multiBasicStr "\"\"\"One\\\nTwo\"\"\"" $ VString "OneTwo"
 
     it "should parse newlines, ignoring 1 leading newline" $
-      testParser multiBasicStr "\"\"\"\nOne\\nTwo\"\"\"" $ VString "One\nTwo"
+      testParser multiBasicStr "\"\"\"\nOne\\\nTwo\"\"\"" $ VString "OneTwo"
 
     it "should parse with espaced whitespace" $
       testParser multiBasicStr "\"\"\"\\\n\
@@ -324,7 +324,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should allow linebreaks in an array, with comments, and terminating comma" $
       testParser assignment "hosts = [\n\
                             \'alpha',  # the first\n\
-                            \'omega'   # the last\n\
+                            \'omega',  # the last\n\
                             \]"
         $ ("hosts", VArray [VString "alpha", VString "omega"])
 
@@ -338,7 +338,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "all string variants are of the same type of the same type" $
       testParser assignment "data = [\"a\", \"\"\"b\"\"\", 'c', '''d''']" $
                             ("data", VArray [ VString "a", VString "b",
-                                                      VString "c", VString "d" ])
+                                              VString "c", VString "d" ])
 
     it "should parse terminating commas in arrays" $
       testParser array "[1, 2, ]" $ VArray [ VInteger 1, VInteger 2 ]
