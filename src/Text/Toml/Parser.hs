@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Text.Toml.Parser
-  ( module Text.Toml.Types
-  , module Text.Toml.Parser
+  ( module Text.Toml.Parser
+  , module Text.Toml.Types
   ) where
 
 
@@ -199,7 +199,7 @@ integer = VInteger <$> (lexeme . signed $ read <$> (many1 digit))
 
 -- | Parses the elements of an array, while restricting them to a certain type.
 arrayOf :: Parser Value -> Parser Value
-arrayOf p = VArray <$> between (char '[') (char ']') separatedValues
+arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedValues)
   where
     separatedValues = sepEndBy (skipBlanks *> p <* skipBlanks) comma <* skipBlanks
     comma           = skipBlanks >> char ',' >> skipBlanks

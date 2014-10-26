@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Toml.Parser.Spec (tomlParserSpec) where
+module Text.Toml.Parser.Spec where
 
 import Test.Tasty (TestTree)
 import Test.Tasty.Hspec
@@ -296,6 +296,21 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
 
   describe "Parser.tomlDoc arrays" $ do
+
+    it "should parse an empty array" $
+      testParser array "[]" $ VArray []
+
+    it "should parse an empty array with whitespace" $
+      testParser array "[ ]" $ VArray []
+
+    it "should not parse an empty array with only a terminating comma" $
+      testParserFails array "[,]"
+
+    it "should parse an empty array of empty arrays" $
+      testParser array "[[],[]]" $ VArray [ VArray [], VArray [] ]
+
+    it "should parse an empty array of empty arrays with whitespace" $
+      testParser array "[ \n[ ]\n ,\n [ \n ] ,\n ]" $ VArray [ VArray [], VArray [] ]
 
     it "should parse nested arrays" $
       testParser assignment "d = [ ['gamma', 'delta'], [1, 2] ]"
