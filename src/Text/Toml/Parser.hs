@@ -2,32 +2,7 @@
 
 module Text.Toml.Parser
   ( module Text.Toml.Types
-
-  , tomlDoc
-  , namedSection
-  , table
-  , tableHeader
-  , tableArrayHeader
-  , headerValue
-  , assignment
-  , value
-
-  , array
-  , boolean
-  , basicStr
-  , multiBasicStr
-  , literalStr
-  , multiLiteralStr
-  , datetime
-  , float
-  , integer
-
-  , arrayOf
-  , vString
-  , escSeq
-  , unicodeHex
-  , signed
-  , skipBlanks
+  , module Text.Toml.Parser
   ) where
 
 
@@ -43,6 +18,12 @@ import System.Locale (defaultTimeLocale, iso8601DateFormat)
 import Numeric (readHex)
 
 import Text.Toml.Types
+
+
+
+-- | Convenience function for the test suite and GHCI.
+parseOnly :: Parser a -> Text -> Either ParseError a
+parseOnly p str = parse (p <* eof) "test" str
 
 
 -- | Parses a complete document formatted according to the TOML spec.
@@ -218,12 +199,10 @@ integer = VInteger <$> (lexeme . signed $ read <$> (many1 digit))
 
 -- | Parses the elements of an array, while restricting them to a certain type.
 arrayOf :: Parser Value -> Parser Value
-arrayOf p = VArray <$> between arrayOpen arrayClose separatedValues
+arrayOf p = VArray <$> between (char '[') (char ']') separatedValues
   where
-    separatedValues = skipBlanks *> p `sepBy` comma <* (comma <|> skipBlanks)
-    comma           = skipBlanks >> char ',' >> skipBlanks >> return ()
-    arrayOpen       = lexeme $ char '['
-    arrayClose      = lexeme $ char ']'
+    separatedValues = sepEndBy (skipBlanks *> p <* skipBlanks) comma <* skipBlanks
+    comma           = skipBlanks >> char ',' >> skipBlanks
 
 
 -- | Creates a 'VString' parser from a 'Text' parser (used by string parser).
@@ -271,7 +250,7 @@ skipBlanks :: Parser ()
 skipBlanks = skipMany blank
   where
     blank   = try ((many1 $ satisfy isSpc) >> return ()) <|> try comment <|> try eol
-    comment = (char '#' >> (many $ satisfy (/= '\n'))) >> return ()
+    comment = char '#' >> (many $ satisfy (/= '\n')) >> return ()
 
 
 -- | Adds matching of tailing whitespaces to parser 'p'.
