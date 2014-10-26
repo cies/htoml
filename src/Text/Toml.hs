@@ -5,7 +5,6 @@ module Text.Toml
   ) where
 
 import Text.Parsec
-import Text.Parsec.Text
 import Data.Text (Text)
 
 import Text.Toml.Parser
