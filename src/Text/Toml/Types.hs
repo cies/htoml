@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Text.Toml.Types where
 
 import Data.Map (Map)

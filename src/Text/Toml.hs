@@ -1,8 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-
-module Text.Toml
-  ( parseTomlDoc
-  ) where
+module Text.Toml where
 
 import Text.Parsec
 import Data.Text (Text)

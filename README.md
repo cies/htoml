@@ -38,6 +38,10 @@ feedback is much appreciated.
 
 ### todo
 
+* Add a JSON interface to it (as Greg suggested on Reddit)
+* Figure out if the lexeme parser is still needed (or even valid, given skipBlanks ubiquity)
+* Consider moving the internal representation to JSON
+* Understand arrays as in [this issue](https://github.com/toml-lang/toml/issues/254)
 * Add more documentation
 * Add more tests (maybe find a more mature TOML parser and steal their tests)
 * Add property tests with QuickCheck (the internet sais it's possible for parsers)
