@@ -2,9 +2,11 @@ import Prelude hiding (readFile)
 import Control.Applicative hiding (many, (<|>))
 import Text.Parsec
 import Text.Parsec.Text
-import Data.Map
+import Data.HashMap.Strict
 import Data.Text
 import Data.Text.IO (readFile)
+import Data.Aeson.Types
+import Data.Aeson.Encode
 
 :seti -XOverloadedStrings
 :set prompt "> "

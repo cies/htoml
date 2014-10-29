@@ -38,25 +38,24 @@ feedback is much appreciated.
 
 ### todo
 
-* Add a JSON interface to it (as Greg suggested on Reddit)
-* Figure out if the lexeme parser is still needed (or even valid, given skipBlanks ubiquity)
-* Consider moving the internal representation to JSON
-* Understand arrays as in [this issue](https://github.com/toml-lang/toml/issues/254)
 * Add more documentation
 * Add more tests (maybe find a more mature TOML parser and steal their tests)
+* Add tests for errors
 * Add property tests with QuickCheck (the internet sais it's possible for parsers)
 * Investigate if the [language agnostic test suite](https://github.com/BurntSushi/toml-test) is interesting for this project
-* Make error messages more useful (and add tests for that)
 * See how lenses may (or may not) fit into this package
-* See if we can learn more from how Aeson does things
 
 
 ### tada
 
+* Add a JSON interface to it (as Greg suggested on Reddit)
+* Make error messages more useful
+* Understand arrays as in [this issue](https://github.com/toml-lang/toml/issues/254)
 * Use Parsec instead of Attoparsec (find Attoparsec version in branch)
 * Small benchmark suite
 * Parser fails on mix-type arrays (as per spec)
 * Haddock docs
+* Consider moving the internal representation to JSON (will not completely, but more like it now)
 * Complete the tests by covering the last two sections of the TOML spec (Tables)
 * Breakingly change the output format to better represent the tree structure that Tables introduce
 * Breakingly change the value types to be more consistent

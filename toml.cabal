@@ -1,9 +1,10 @@
 name:              toml
-version:           0.3.0.0
+version:           0.4.0.0
 synopsis:          A parser for TOML files.
 description:       TOML is a obvious and minimal format for config files.
                    This package provides a TOML parser,
                    build with the Parsec library of parser combinators.
+                   It provides a JSON interface using the Aeson library.
 homepage:          https://github.com/seliopou/toml
 license:           BSD3
 license-file:      LICENSE
@@ -21,6 +22,8 @@ library
   build-depends:        base             >= 4.6  && < 5
                         , parsec         >= 3.1.5
                         , containers     >= 0.5  && < 0.6
+                        , unordered-containers
+                        , aeson
                         , text
                         , time           -any
                         , old-locale     -any
@@ -33,6 +36,8 @@ executable test-toml
   build-depends:        base             >= 4.6  && < 5
                         , parsec         >= 3.1.5
                         , containers     >= 0.5  && < 0.6
+                        , unordered-containers
+                        , aeson
                         , text
                         , time           -any
                         , Cabal          >= 1.16.0
@@ -49,6 +54,8 @@ test-suite Tests
   build-depends:        base             >= 4.6  && < 5
                         , parsec         >= 3.1.5
                         , containers     >= 0.5  && < 0.6
+                        , unordered-containers
+                        , vector
                         , text
                         , time           -any
                         , Cabal          >= 1.16.0
@@ -65,6 +72,8 @@ benchmark benchmarks
   build-depends:        base             >= 4.6  && < 5
                         , parsec         >= 3.1.5
                         , containers     >= 0.5  && < 0.6
+                        , unordered-containers
+                        , aeson
                         , text
                         , time           -any
                         , Cabal          >= 1.16.0

@@ -8,7 +8,7 @@ module Text.Toml.Parser
 
 import Prelude hiding (takeWhile, concat)
 import Control.Applicative hiding (many, (<|>), optional)
-import qualified Data.Map as M
+import qualified Data.HashMap.Strict as M
 import qualified Data.Set as S
 import Data.Text (Text, pack, unpack, concat)
 import Text.Parsec
@@ -27,19 +27,19 @@ parseOnly p str = parse (p <* eof) "test" str
 
 
 -- | Parses a complete document formatted according to the TOML spec.
-tomlDoc :: Parser TomlDoc
+tomlDoc :: Parser Table
 tomlDoc = do
     skipBlanks
     topTable <- table
     namedSections <- many namedSection
-    eof  -- ensures this input is completely consumed
-    case sectionsToNodes (reverse namedSections) of
-      Left msg -> fail msg
-      Right r  -> return $ TomlDoc topTable r
+    eof  -- ensures input is completely consumed
+    case join topTable (reverse namedSections) of
+      Left msg -> fail (unpack msg)  -- TODO: allow Text in Parse Errors
+      Right r  -> return $ r
   where
-    sectionsToNodes [] = Right []
-    sectionsToNodes (x:xs) = case sectionsToNodes xs of Left msg -> Left msg
-                                                        Right r  -> insert x r
+    join tbl []     = Right tbl
+    join tbl (x:xs) = case join tbl xs of Left msg -> Left msg
+                                          Right r  -> insert x r
 
 
 -- | Parses a table of key-value pairs.
@@ -48,7 +48,7 @@ table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
     case hasDup (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
-      Nothing -> return $ M.fromList pairs
+      Nothing -> return $ M.fromList (map (\(k, v) -> (k, NTValue v)) pairs)
   where
     hasDup        :: Ord a => [a] -> Maybe a
     hasDup xs     = dup' xs S.empty
@@ -58,14 +58,14 @@ table = do
 
 -- | Parses a 'Table' with header ('Left') or a 'TableArray'
 -- with header ('Right').
-namedSection :: Parser ([Text], Table, Bool)
+namedSection :: Parser ([Text], Node)
 namedSection = do
     eitherHdr <- try (Left <$> tableHeader) <|> try (Right <$> tableArrayHeader)
     skipBlanks
     tbl <- table
     skipBlanks
-    return $ case eitherHdr of Left  ns -> (ns, tbl, False)
-                               Right ns -> (ns, tbl, True)
+    return $ case eitherHdr of Left  ns -> (ns, NTable   tbl )
+                               Right ns -> (ns, NTArray [tbl])
 
 
 -- | Parses a table header.
@@ -89,7 +89,7 @@ headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
 
 
 -- | Parses a value-to-key assignment.
-assignment :: Parser (Text, Value)
+assignment :: Parser (Text, TValue)
 assignment = do
     k <- pack <$> many1 keyChar
     skipBlanks >> char '=' >> skipBlanks
@@ -102,7 +102,7 @@ assignment = do
 
 
 -- | Parser for a value.
-value :: Parser Value
+value :: Parser TValue
 value = (try array    <?> "array")
     <|> (try boolean  <?> "boolean")
     <|> (try anyStr   <?> "string")
@@ -115,7 +115,7 @@ value = (try array    <?> "array")
 -- | * Toml value parsers
 --
 
-array :: Parser Value
+array :: Parser TValue
 array = (try (arrayOf array)    <?> "array of arrays")
     <|> (try (arrayOf boolean)  <?> "array of booleans")
     <|> (try (arrayOf anyStr)   <?> "array of strings")
@@ -124,23 +124,23 @@ array = (try (arrayOf array)    <?> "array of arrays")
     <|> (try (arrayOf integer)  <?> "array of integers")
 
 
-boolean :: Parser Value
+boolean :: Parser TValue
 boolean = VBoolean <$> ( (try . lexeme . string $ "true")  *> return True
                      <|> (try . lexeme . string $ "false") *> return False )
 
 
-anyStr :: Parser Value
+anyStr :: Parser TValue
 anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
 
 
-basicStr :: Parser Value
+basicStr :: Parser TValue
 basicStr = vString $ between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
 
 
-multiBasicStr :: Parser Value
+multiBasicStr :: Parser TValue
 multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
@@ -153,13 +153,13 @@ multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
     escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
 
-literalStr :: Parser Value
+literalStr :: Parser TValue
 literalStr = vString $ between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
   where
     sQuote = char '\''
 
 
-multiLiteralStr :: Parser Value
+multiLiteralStr :: Parser TValue
 multiLiteralStr = vString $ openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3)
   where
     -- | Parse the a tripple-single quote, with possibly a newline attached
@@ -168,7 +168,7 @@ multiLiteralStr = vString $ openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3
     sQuote3     = try . count 3 . char $ '\''
 
 
-datetime :: Parser Value
+datetime :: Parser TValue
 datetime = do
     d <- manyTill anyChar (try $ char 'Z')
     let  mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") d
@@ -177,7 +177,7 @@ datetime = do
 
 
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
-float :: Parser Value
+float :: Parser TValue
 float = VFloat <$> (lexeme $ signed unsignedDouble)
   where
     unsignedDouble = do
@@ -188,7 +188,7 @@ float = VFloat <$> (lexeme $ signed unsignedDouble)
       return . read . unpack . concat $ [n, ".", d]
 
 
-integer :: Parser Value
+integer :: Parser TValue
 integer = VInteger <$> (lexeme . signed $ read <$> (many1 digit))
 
 
@@ -198,7 +198,7 @@ integer = VInteger <$> (lexeme . signed $ read <$> (many1 digit))
 --
 
 -- | Parses the elements of an array, while restricting them to a certain type.
-arrayOf :: Parser Value -> Parser Value
+arrayOf :: Parser TValue -> Parser TValue
 arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedValues)
   where
     separatedValues = sepEndBy (skipBlanks *> p <* skipBlanks) comma <* skipBlanks
@@ -206,7 +206,7 @@ arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedVal
 
 
 -- | Creates a 'VString' parser from a 'Text' parser (used by string parser).
-vString :: Parser Text -> Parser Value
+vString :: Parser Text -> Parser TValue
 vString p = VString <$> lexeme p
 
 
