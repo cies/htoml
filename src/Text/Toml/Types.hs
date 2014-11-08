@@ -10,7 +10,6 @@ import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format()
 import Data.List (intersect)
-import Data.Aeson.Types
 
 
 -- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
@@ -23,11 +22,6 @@ data Node = NTValue TValue
           | NTArray [Table]
   deriving (Eq, Show)
 
-instance ToJSON Node where
-  toJSON (NTValue v) = toJSON v
-  toJSON (NTable v)  = toJSON v
-  toJSON (NTArray v) = toJSON v
-
 
 -- | A 'TValue' may contain any type of value that can put in a 'VArray'.
 data TValue = VString   Text
@@ -37,14 +31,6 @@ data TValue = VString   Text
             | VDatetime UTCTime
             | VArray    [TValue]
   deriving (Eq, Show)
-
-instance ToJSON TValue where
-  toJSON (VString v)   = toJSON v
-  toJSON (VInteger v)  = toJSON v
-  toJSON (VFloat v)    = toJSON v
-  toJSON (VBoolean v)  = toJSON v
-  toJSON (VDatetime v) = toJSON v
-  toJSON (VArray v)    = toJSON v
 
 
 -- | Contruct an empty 'Table'.
