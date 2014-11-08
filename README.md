@@ -1,4 +1,4 @@
-toml
+Toml
 ====
 
 A [TOML](https://github.com/mojombo/toml) parser library in [Haskell](http://haskell-lang.org).
@@ -19,7 +19,7 @@ of the TOML spec..
 The documentation for this package may (or may not) be found on [Hackage](https://hackage.haskell.org/package/toml).
 
 
-### tests and benchmarks
+### Tests and benchmarks
 
 The test suite is build by default, `cabal configure --disable-tests` disables them.
 The benchmark suite is not run by default, `cabal configure --enable-benchmarks` enables them.
@@ -28,25 +28,28 @@ With `cabal build` both of these suites are build as executables and
 put somewhere in `dist/`. Passing `--help` to them will reveal their
 options.
 
+[BurntSushi's language agnostic test suite](https://github.com/BurntSushi/toml-test)
+is embedded in the test suite executable.  A shell-script lives in `test/BurntSushi`
+by which the latest tests can be fetched from BurntSushi's repository.
 
-### contributions
+
+### Contributions
 
 Most welcome; by issues, discussions, pointers and pull-requests.
 This is one of the first Haskell libraries I have written, any
 feedback is much appreciated.
 
 
-### todo
+### Todo
 
 * Add more documentation
 * Add more tests (maybe find a more mature TOML parser and steal their tests)
 * Add tests for errors
 * Add property tests with QuickCheck (the internet sais it's possible for parsers)
-* Investigate if the [language agnostic test suite](https://github.com/BurntSushi/toml-test) is interesting for this project
 * See how lenses may (or may not) fit into this package
 
 
-### tada
+### Tada
 
 * Add a JSON interface to it (as Greg suggested on Reddit)
 * Make error messages more useful
@@ -55,7 +58,8 @@ feedback is much appreciated.
 * Small benchmark suite
 * Parser fails on mix-type arrays (as per spec)
 * Haddock docs
-* Consider moving the internal representation to JSON (will not completely, but more like it now)
+* Have an internal representation that easily maps to JSON (will not completely, but more like it now)
+* Incorporate [BurntSushi's language agnostic test suite](https://github.com/BurntSushi/toml-test)
 * Complete the tests by covering the last two sections of the TOML spec (Tables)
 * Breakingly change the output format to better represent the tree structure that Tables introduce
 * Breakingly change the value types to be more consistent
