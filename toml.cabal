@@ -17,14 +17,13 @@ library
   exposed-modules:      Text.Toml
                         , Text.Toml.Parser
                         , Text.Toml.Types
-                        , Text.Toml.Json.Standard
-                        , Text.Toml.Json.BurntSushi
   hs-source-dirs:       src
   default-language:     Haskell2010
   build-depends:        base             >= 4.6  && < 5
                         , parsec         >= 3.1.5
                         , containers     >= 0.5  && < 0.6
                         , unordered-containers
+                        , vector
                         , aeson
                         , text
                         , time           -any
@@ -41,6 +40,7 @@ executable test-toml
                         , bytestring
                         , file-embed
                         , unordered-containers
+                        , vector
                         , aeson
                         , text
                         , time           -any
@@ -81,6 +81,7 @@ benchmark benchmarks
                         , parsec         >= 3.1.5
                         , containers     >= 0.5  && < 0.6
                         , unordered-containers
+                        , vector
                         , aeson
                         , text
                         , time           -any

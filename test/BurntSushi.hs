@@ -14,7 +14,7 @@ import Data.Aeson
 import Data.Text.Encoding (decodeUtf8)
 
 import Text.Toml
-import Text.Toml.Json.BurntSushi()
+import Text.Toml.Types
 
 
 allFiles :: [(FilePath, B.ByteString)]
@@ -23,7 +23,7 @@ allFiles = $(embedDir "test/BurntSushi")
 
 validPairs :: [(String, (B.ByteString, B.ByteString))]
 validPairs =
-    map (\(tFP, tBS) -> (stripExt tFP, (tBS, jsonCounterpart tFP))) validFiles
+    map (\(tFP, tBS) -> (stripExt tFP, (tBS, jsonCounterpart tFP))) tomlFiles
   where
     validFiles = filter (\(f, _) -> "valid" `isPrefixOf` f) allFiles
     filterOnSuffix sfx = filter (\(f, _) -> sfx `isSuffixOf` f)
@@ -52,10 +52,10 @@ tests = return $ testGroup "BurntSushi's test suite"
   where
     assertIsValid f tomlBS jsonBS =
       case parseTomlDoc "test" (decodeUtf8 tomlBS) of
-        Left _ -> assertFailure $ "Could not parse TOML file: " ++ f ++ ".toml"
+        Left e -> assertFailure $ "Could not parse TOML file: " ++ f ++ ".toml\n" ++ (show e)
         Right tomlTry -> case eitherDecode (fromStrict jsonBS) of
           Left _ -> assertFailure $ "Could not parse JSON file: " ++ f ++ ".json"
-          Right jsonCorrect -> assertEqual "" jsonCorrect (toJSON tomlTry)
+          Right jsonCorrect -> assertEqual "" jsonCorrect (toBsJSON tomlTry)
     assertParseFailure f tomlBS =
       case parseTomlDoc "test" (decodeUtf8 tomlBS) of
         Left _ -> return ()

@@ -1,5 +1,6 @@
 module Text.Toml where
 
+import Prelude hiding (readFile)
 import Text.Parsec
 import Data.Text (Text)
 

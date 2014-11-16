@@ -1,15 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
+-- TODO: measure the improvement of Vector over List
 
 module Text.Toml.Types where
 
 import qualified Data.HashMap.Strict as M
--- TODO: measure the improvement of Vector over List
--- import qualified Data.Vector as V
+import Data.Aeson.Types
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format()
 import Data.List (intersect)
+import qualified Data.Vector as V
 
 
 -- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
@@ -96,3 +98,75 @@ commonInsertError what name =
                        _          -> "array of tables"
       n = T.intercalate "." name
   in  Left $ T.concat ["Cannot insert ", w, " '", n, "' as key already exists."]
+
+
+
+
+
+-- | 'ToJSON' instances for the 'Node' type that produce Aeson (JSON)
+-- in line with the TOML specification.
+instance ToJSON Node where
+  toJSON (NTValue v) = toJSON v
+  toJSON (NTable v)  = toJSON v
+  toJSON (NTArray v) = toJSON v
+
+
+-- | 'ToJSON' instances for the 'TValue' type that produce Aeson (JSON)
+-- in line with the TOML specification.
+instance ToJSON TValue where
+  toJSON (VString v)   = toJSON v
+  toJSON (VInteger v)  = toJSON v
+  toJSON (VFloat v)    = toJSON v
+  toJSON (VBoolean v)  = toJSON v
+  toJSON (VDatetime v) = toJSON v
+  toJSON (VArray v)    = toJSON v
+
+
+
+
+-- | Type class for converting to BurntSushi-style JSON.
+class ToBsJSON a where
+  toBsJSON :: a -> Value
+
+
+-- | Provide a 'toBsJSON' instance to the 'NTArray'.
+instance (ToBsJSON a) => ToBsJSON [a] where
+  toBsJSON = Array . V.fromList . map toBsJSON
+  {-# INLINE toBsJSON #-}
+
+
+-- | Provide a 'toBsJSON' instance to the 'NTable'.
+instance (ToBsJSON v) => ToBsJSON (M.HashMap Text v) where
+  toBsJSON = Object . M.map toBsJSON
+  {-# INLINE toBsJSON #-}
+
+
+-- | 'ToBsJSON' instances for the 'Node' type that produce Aeson (JSON)
+-- in line with BurntSushi's language agnostic TOML test suite.
+instance ToBsJSON Node where
+  toBsJSON (NTValue v) = toBsJSON v
+  toBsJSON (NTable v)  = toBsJSON v
+  toBsJSON (NTArray v) = toBsJSON v
+
+
+-- | 'ToBsJSON' instances for the 'TValue' type that produce Aeson (JSON)
+-- in line with BurntSushi's language agnostic TOML test suite.
+--
+-- BurntSushi's JSON encoding explicitly specifies the types of the values.
+instance ToBsJSON TValue where
+  toBsJSON (VString v)   = object [ "type"  .= toJSON ("string" :: String)
+                                  , "value" .= toJSON v ]
+  toBsJSON (VInteger v)  = object [ "type"  .= toJSON ("integer" :: String)
+                                  , "value" .= toJSON (show v) ]
+  toBsJSON (VFloat v)    = object [ "type"  .= toJSON ("float" :: String)
+                                  , "value" .= toJSON (show v) ]
+  toBsJSON (VBoolean v)  = object [ "type"  .= toJSON ("bool" :: String)
+                                  , "value" .= toJSON (if v then "true" else "false" :: String) ]
+  toBsJSON (VDatetime v) = object [ "type"  .= toJSON ("datetime" :: String)
+                                  , "value" .= toJSON (let s = show v
+                                                           z = take (length s - 4) s  ++ "Z"
+                                                           d = take (length z - 10) z
+                                                           t = drop (length z - 9) z
+                                                       in  d ++ "T" ++ t)]
+  toBsJSON (VArray v)    = object [ "type"  .= toJSON ("array" :: String)
+                                  , "value" .= toBsJSON v ]
