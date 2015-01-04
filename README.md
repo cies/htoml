@@ -34,11 +34,11 @@ start exploring:
     > txt <- readFile "benchmarks/example.toml"
     > let r = parseTomlDoc "" txt
     > r
-    Right (fromList [("database",NTable (fromList [("enabled",NTValue (VBoolean True)), [...]
+    Right (fromList [("database",NTable (fromList [("enabled",NTValue (VBoolean True) [...]
 
     > let Right toml = r
     > toJSON toml
-    Object (fromList [("database",Object (fromList [("enabled",Bool True),("ports",Array [...]
+    Object (fromList [("database",Object (fromList [("enabled",Bool True) [...]
 
     > let Left error = parseTomlDoc "" "== invalid toml =="
     > error
