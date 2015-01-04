@@ -2,14 +2,14 @@
 
 module Text.Toml.Parser.Spec where
 
-import Test.Tasty (TestTree)
-import Test.Tasty.Hspec
+import           Test.Tasty          (TestTree)
+import           Test.Tasty.Hspec
 
-import Data.HashMap.Strict (fromList)
-import Data.Time.Clock (UTCTime(..))
-import Data.Time.Calendar (Day(..))
+import           Data.HashMap.Strict (fromList)
+import           Data.Time.Calendar  (Day (..))
+import           Data.Time.Clock     (UTCTime (..))
 
-import Text.Toml.Parser
+import           Text.Toml.Parser
 
 
 tomlParserSpec :: IO TestTree

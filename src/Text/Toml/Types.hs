@@ -1,18 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
--- TODO: measure the improvement of Vector over List
+{-# LANGUAGE OverloadedStrings #-}
 
 module Text.Toml.Types where
 
+import           Data.Aeson.Types
 import qualified Data.HashMap.Strict as M
-import Data.Aeson.Types
-import Data.Int (Int64)
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Time.Clock (UTCTime)
-import Data.Time.Format()
-import Data.List (intersect)
-import qualified Data.Vector as V
+import           Data.Int            (Int64)
+import           Data.List           (intersect)
+import           Data.Text           (Text)
+import qualified Data.Text           as T
+import           Data.Time.Clock     (UTCTime)
+import           Data.Time.Format    ()
+import qualified Data.Vector         as V
 
 
 -- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
@@ -54,7 +53,7 @@ insert :: ([Text], Node) -> Table -> Either Text Table
 insert ([], _)         _ = error "FATAL: Cannot call 'insert' without a name."
 insert (_ , NTValue _) _ = error "FATAL: Cannot call 'insert' with a TValue."
 insert ([name], node) ttbl =
-    -- ^ In case 'name' is final
+    -- In case 'name' is final
     case M.lookup name ttbl of
       Nothing           -> Right $ M.insert name node ttbl
       Just (NTable t)   -> case node of
@@ -68,7 +67,7 @@ insert ([name], node) ttbl =
         (NTArray na) -> Right $ M.insert name (NTArray $ a ++ na) ttbl
       Just _            -> commonInsertError node [name]
 insert (fullName@(name:ns), node) ttbl =
-    -- ^ In case 'name' is not final, but a sub-name
+    -- In case 'name' is not final, but a sub-name
     case M.lookup name ttbl of
       Nothing           -> case insert (ns, node) emptyTable of
                              Left msg -> Left msg

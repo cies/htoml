@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Prelude hiding (readFile)
-import Criterion.Main
-import Data.Text.IO (readFile)
+import           Prelude        hiding (readFile)
 
-import Text.Toml
+import           Criterion.Main
+import           Data.Text.IO   (readFile)
+
+import           Text.Toml
 
 
 main :: IO ()

@@ -1,10 +1,11 @@
 module Text.Toml where
 
-import Prelude hiding (readFile)
-import Text.Parsec
-import Data.Text (Text)
+import           Prelude          hiding (readFile)
 
-import Text.Toml.Parser
+import           Data.Text        (Text)
+import           Text.Parsec
+
+import           Text.Toml.Parser
 
 
 -- | Parse a 'Text' that results in 'Either' a 'String'

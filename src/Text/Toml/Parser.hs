@@ -6,19 +6,20 @@ module Text.Toml.Parser
   ) where
 
 
-import Prelude hiding (takeWhile, concat)
-import Control.Applicative hiding (many, (<|>), optional)
-import qualified Data.HashMap.Strict as M
-import qualified Data.Set as S
-import Data.Text (Text, pack, unpack, concat)
-import Text.Parsec
-import Text.Parsec.Text
-import Data.Time.Format (parseTime)
-import qualified Data.List as L
-import System.Locale (defaultTimeLocale, iso8601DateFormat)
-import Numeric (readHex)
+import           Prelude             hiding (concat, takeWhile)
 
-import Text.Toml.Types
+import           Control.Applicative hiding (many, optional, (<|>))
+import qualified Data.HashMap.Strict as M
+import qualified Data.List           as L
+import qualified Data.Set            as S
+import           Data.Text           (Text, concat, pack, unpack)
+import           Data.Time.Format    (parseTime)
+import           Numeric             (readHex)
+import           System.Locale       (defaultTimeLocale, iso8601DateFormat)
+import           Text.Parsec
+import           Text.Parsec.Text
+
+import           Text.Toml.Types
 
 
 
@@ -57,8 +58,9 @@ table = do
     dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
 
 
--- | Parses a 'Table' with header ('Left') or a 'TableArray'
--- with header ('Right').
+-- | Parses a 'Table' or 'TableArray' with its header.
+-- The resulting tuple has the header's value in the first position, and the
+-- 'NTable' or 'NTArray' in the second.
 namedSection :: Parser ([Text], Node)
 namedSection = do
     eitherHdr <- try (Left <$> tableHeader) <|> try (Right <$> tableArrayHeader)
@@ -81,7 +83,7 @@ tableArrayHeader = between (twoChar  '[') (twoChar ']') headerValue
     twoChar c = count 2 (char c)
 
 
--- | Parses the value of any header, into a list of 'Text'.
+-- | Parses the value of any header (names separated by dots), into a list of 'Text'.
 headerValue :: Parser [Text]
 headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
   where
@@ -89,7 +91,7 @@ headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
                                     c /= '[' && c /= ']'  && c /= '.'  && c /= '#')
 
 
--- | Parses a value-to-key assignment.
+-- | Parses a key-value assignment.
 assignment :: Parser (Text, TValue)
 assignment = do
     k <- pack <$> many1 keyChar
@@ -102,7 +104,7 @@ assignment = do
                              c /= '=' && c /= '#'  && c /= '[')
 
 
--- | Parser for a value.
+-- | Parses a value.
 value :: Parser TValue
 value = (try array    <?> "array")
     <|> (try boolean  <?> "boolean")
@@ -227,7 +229,7 @@ escSeq = char '\\' *> escSeqChar
               <?> "escape character"
 
 
--- | Parser for unicode hexadecimal values of length 'n'.
+-- | Parser for unicode hexadecimal values of representation length 'n'.
 unicodeHex :: Int -> Parser Char
 unicodeHex n = do
     h <- count n (satisfy isHex)

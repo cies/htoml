@@ -1,17 +1,24 @@
-name:              toml
-version:           0.4.0.0
+name:              htoml
+version:           0.1.0.0
 synopsis:          A parser for TOML files.
 description:       TOML is a obvious and minimal format for config files.
                    This package provides a TOML parser,
                    build with the Parsec library of parser combinators.
                    It provides a JSON interface using the Aeson library.
-homepage:          https://github.com/seliopou/toml
+homepage:          https://github.com/cies/htoml
+bug-reports:       https://github.com/cies/htoml/issues
 license:           BSD3
 license-file:      LICENSE
-author:            Spiros Eliopoulos, Cies Breijs
+author:            Cies Breijs
+maintainer:        Cies Breijs
 category:          Text
 build-type:        Simple
 cabal-version:     >= 1.10
+
+
+source-repository      head
+  type:                git
+  location:            https://github.com/cies/htoml.git
 
 library
   exposed-modules:      Text.Toml
@@ -29,7 +36,7 @@ library
                         , time           -any
                         , old-locale     -any
 
-executable test-toml
+executable tests
   hs-source-dirs:       test
   ghc-options:          -Wall
   main-is:              Test.hs
@@ -45,7 +52,7 @@ executable test-toml
                         , text
                         , time           -any
                         , Cabal          >= 1.16.0
-                        , toml
+                        , htoml
                         , tasty
                         , tasty-hspec
                         , tasty-hunit
@@ -66,7 +73,7 @@ test-suite Tests
                         , text
                         , time           -any
                         , Cabal          >= 1.16.0
-                        , toml
+                        , htoml
                         , tasty
                         , tasty-hspec
                         , tasty-hunit
@@ -86,5 +93,5 @@ benchmark benchmarks
                         , text
                         , time           -any
                         , Cabal          >= 1.16.0
-                        , toml
+                        , htoml
                         , criterion

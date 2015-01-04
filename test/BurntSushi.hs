@@ -3,18 +3,18 @@
 
 module BurntSushi (tests) where
 
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit
+import           Test.Tasty           (TestTree, testGroup)
+import           Test.Tasty.HUnit
 
-import qualified Data.ByteString as B
-import Data.ByteString.Lazy (fromStrict)
-import Data.FileEmbed
-import Data.List (isPrefixOf, isSuffixOf)
-import Data.Aeson
-import Data.Text.Encoding (decodeUtf8)
+import           Data.Aeson
+import qualified Data.ByteString      as B
+import           Data.ByteString.Lazy (fromStrict)
+import           Data.FileEmbed
+import           Data.List            (isPrefixOf, isSuffixOf)
+import           Data.Text.Encoding   (decodeUtf8)
 
-import Text.Toml
-import Text.Toml.Types
+import           Text.Toml
+import           Text.Toml.Types
 
 
 allFiles :: [(FilePath, B.ByteString)]

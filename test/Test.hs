@@ -1,10 +1,10 @@
 module Main where
 
 
-import Test.Tasty (defaultMain, testGroup)
+import           Test.Tasty            (defaultMain, testGroup)
 
-import Text.Toml.Parser.Spec
 import qualified BurntSushi
+import           Text.Toml.Parser.Spec
 
 
 main :: IO ()
