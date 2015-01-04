@@ -6,6 +6,7 @@ module Text.Toml.Types where
 
 import qualified Data.HashMap.Strict as M
 import Data.Aeson.Types
+import Data.Int (Int64)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time.Clock (UTCTime)
@@ -27,7 +28,7 @@ data Node = NTValue TValue
 
 -- | A 'TValue' may contain any type of value that can put in a 'VArray'.
 data TValue = VString   Text
-            | VInteger  Integer
+            | VInteger  Int64
             | VFloat    Double
             | VBoolean  Bool
             | VDatetime UTCTime
@@ -43,15 +44,6 @@ emptyTable = M.empty
 -- | Contruct an empty 'NTable'.
 emptyNTable :: Node
 emptyNTable = NTable M.empty
-
-
--- | Merge two tables, resulting in an error when overlapping keys are
--- found ('Left' will contian those keys).  When no overlapping keys are
--- found the result will contain the union of both tables in a 'Right'.
-merge :: Table -> Table -> Either [Text] Table
-merge existing new = case intersect (M.keys existing) (M.keys new) of
-                       [] -> Right $ M.union existing new
-                       ds -> Left  $ ds
 
 
 -- | Inserts a table ('Table') with name ('[Text]') which may be part of
@@ -91,6 +83,15 @@ insert (fullName@(name:ns), node) ttbl =
       Just _            -> commonInsertError node fullName
 
 
+-- | Merge two tables, resulting in an error when overlapping keys are
+-- found ('Left' will contian those keys).  When no overlapping keys are
+-- found the result will contain the union of both tables in a 'Right'.
+merge :: Table -> Table -> Either [Text] Table
+merge existing new = case intersect (M.keys existing) (M.keys new) of
+                       [] -> Right $ M.union existing new
+                       ds -> Left  $ ds
+
+
 -- | Convenience function to construct a common error message for the 'insert' function.
 commonInsertError :: Node -> [Text] -> Either Text Table
 commonInsertError what name =
@@ -101,7 +102,7 @@ commonInsertError what name =
 
 
 
-
+-- * Regular ToJSON instances
 
 -- | 'ToJSON' instances for the 'Node' type that produce Aeson (JSON)
 -- in line with the TOML specification.
@@ -123,8 +124,13 @@ instance ToJSON TValue where
 
 
 
+-- * Special BurntSushi ToJSON type class and instances
 
--- | Type class for converting to BurntSushi-style JSON.
+-- | Type class for conversion to BurntSushi-style JSON.
+--
+-- BurntSushi has made a language agnostic test suite available that
+-- this library uses. This test suit expects that values are encoded
+-- as JSON objects with a 'type' and a 'value' member.
 class ToBsJSON a where
   toBsJSON :: a -> Value
 
@@ -152,7 +158,8 @@ instance ToBsJSON Node where
 -- | 'ToBsJSON' instances for the 'TValue' type that produce Aeson (JSON)
 -- in line with BurntSushi's language agnostic TOML test suite.
 --
--- BurntSushi's JSON encoding explicitly specifies the types of the values.
+-- As seen in this function, BurntSushi's JSON encoding explicitly
+-- specifies the types of the values.
 instance ToBsJSON TValue where
   toBsJSON (VString v)   = object [ "type"  .= toJSON ("string" :: String)
                                   , "value" .= toJSON v ]
@@ -167,6 +174,6 @@ instance ToBsJSON TValue where
                                                            z = take (length s - 4) s  ++ "Z"
                                                            d = take (length z - 10) z
                                                            t = drop (length z - 9) z
-                                                       in  d ++ "T" ++ t)]
+                                                       in  d ++ "T" ++ t) ]
   toBsJSON (VArray v)    = object [ "type"  .= toJSON ("array" :: String)
                                   , "value" .= toBsJSON v ]

@@ -283,23 +283,26 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse positive floats" $
       testParser float "3.14" $ VFloat 3.14
 
+    it "should parse positive floats with plus sign" $
+      testParser float "+3.14" $ VFloat 3.14
+
     it "should parse negative floats" $
       testParser float "-0.1" $ VFloat (-0.1)
 
     it "should parse more or less zero float" $
       testParser float "0.0" $ VFloat 0.0
 
+    it "should parse 'scientific notation' ('e'-notation)" $
+      testParser float "1.5e6" $ VFloat 1500000.0
+
+    it "should parse 'scientific notation' ('e'-notation) with upper case E" $
+      testParser float "1E0" $ VFloat 1.0
+
     it "should not accept floats starting with a dot" $
       testParserFails float ".5"
 
     it "should not accept floats without any decimals" $
       testParserFails float "5."
-
-    it "should not accept 'scientific notation' ('e'-notation) of numbers" $
-      testParserFails assignment "a_million_and_a_half = 1.5e6"
-
-    it "should not allow floats prefixed with a plus" $
-      testParserFails float "+2.1828"
 
 
   describe "Parser.integer" $ do
@@ -313,8 +316,8 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse zero" $
       testParser integer "0" $ VInteger 0
 
-    it "should not allow integers prefixed with a plus" $
-      testParserFails integer "+42"
+    it "should parse integers prefixed with a plus" $
+      testParser integer "+42" $ VInteger 42
 
 
   describe "Parser.tomlDoc arrays" $ do

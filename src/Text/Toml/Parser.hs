@@ -14,6 +14,7 @@ import Data.Text (Text, pack, unpack, concat)
 import Text.Parsec
 import Text.Parsec.Text
 import Data.Time.Format (parseTime)
+import qualified Data.List as L
 import System.Locale (defaultTimeLocale, iso8601DateFormat)
 import Numeric (readHex)
 
@@ -125,8 +126,8 @@ array = (try (arrayOf array)    <?> "array of arrays")
 
 
 boolean :: Parser TValue
-boolean = VBoolean <$> ( (try . lexeme . string $ "true")  *> return True
-                     <|> (try . lexeme . string $ "false") *> return False )
+boolean = VBoolean <$> ( (try . string $ "true")  *> return True  <|>
+                         (try . string $ "false") *> return False )
 
 
 anyStr :: Parser TValue
@@ -134,14 +135,14 @@ anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try lite
 
 
 basicStr :: Parser TValue
-basicStr = vString $ between dQuote dQuote (fmap pack $ many strChar)
+basicStr = VString <$> between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
 
 
 multiBasicStr :: Parser TValue
-multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
+multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
@@ -154,13 +155,13 @@ multiBasicStr = vString $ openDQuote3 *> (fmap pack $ manyTill strChar dQuote3)
 
 
 literalStr :: Parser TValue
-literalStr = vString $ between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
+literalStr = VString <$> between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
   where
     sQuote = char '\''
 
 
 multiLiteralStr :: Parser TValue
-multiLiteralStr = vString $ openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3)
+multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3))
   where
     -- | Parse the a tripple-single quote, with possibly a newline attached
     openSQuote3 = try (sQuote3 <* char '\n') <|> try sQuote3
@@ -178,18 +179,22 @@ datetime = do
 
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
 float :: Parser TValue
-float = VFloat <$> (lexeme $ signed unsignedDouble)
+float = VFloat <$> do
+    n <- intStr
+    char '.'
+    d <- uintStr
+    e <- try (satisfy (\c -> c == 'e' || c == 'E') *> intStr) <|> return "0"
+    return . read . L.concat $ [n, ".", d, "e", e]
   where
-    unsignedDouble = do
-      let numStr = pack <$> many1 (satisfy (\c -> c >= '0' && c <= '9'))
-      n <- numStr
-      char '.'  -- do not use the period lexeme (that allows tailing whitespace)
-      d <- numStr
-      return . read . unpack . concat $ [n, ".", d]
+    sign    = try (string "-") <|> (try (char '+') >> return "") <|> return ""
+    uintStr = many1 digit
+    intStr  = do s <- sign
+                 u <- uintStr
+                 return . L.concat $ [s, u]
 
 
 integer :: Parser TValue
-integer = VInteger <$> (lexeme . signed $ read <$> (many1 digit))
+integer = VInteger <$> (signed $ read <$> (many1 digit))
 
 
 
@@ -203,11 +208,6 @@ arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedVal
   where
     separatedValues = sepEndBy (skipBlanks *> p <* skipBlanks) comma <* skipBlanks
     comma           = skipBlanks >> char ',' >> skipBlanks
-
-
--- | Creates a 'VString' parser from a 'Text' parser (used by string parser).
-vString :: Parser Text -> Parser TValue
-vString p = VString <$> lexeme p
 
 
 -- | Parser for escape sequences.
@@ -238,11 +238,11 @@ unicodeHex n = do
     maxChar = fromEnum (maxBound :: Char)
 
 
--- | Parser for negation signs (minusses).
---
--- Attoparsec 'signed' allows a "+" prefix; reimplemented according to Toml spec.
+-- | Parser for signs (a plus or a minus).
 signed :: Num a => Parser a -> Parser a
-signed p = try (negate <$> (char '-' *> p)) <|> try p
+signed p =  try (negate <$> (char '-' *> p))
+        <|> try (char '+' *> p)
+        <|> try p
 
 
 -- | Parses the (rest of the) line including an EOF, whitespace and comments.
@@ -253,16 +253,11 @@ skipBlanks = skipMany blank
     comment = char '#' >> (many $ satisfy (/= '\n')) >> return ()
 
 
--- | Adds matching of tailing whitespaces to parser 'p'.
-lexeme :: Parser a -> Parser a
-lexeme p = p <* (many $ satisfy isSpc)
-
-
 -- | Results in 'True' for whitespace chars, tab or space, according to spec.
 isSpc :: Char -> Bool
 isSpc c = c == ' ' || c == '\t'
 
 
--- | Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n'.
+-- | Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n' or 0x0D a.k.a. '\r'.
 eol :: Parser ()
-eol = satisfy (== '\n') >> return ()
+eol = satisfy (\c -> c == '\n' || c == '\r') >> return ()
