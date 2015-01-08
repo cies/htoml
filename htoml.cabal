@@ -1,22 +1,24 @@
 name:                     htoml
-version:                  0.1.0.1
-synopsis:                 A parser for TOML files.
-description:              TOML is a obvious and minimal format for config files.
+version:                  0.1.0.2
+synopsis:                 Parser for TOML files
+description:              TOML is an obvious and minimal format for config files.
                           .
                           This package provides a TOML parser,
-                          build with the Parsec library of parser combinators.
-                          .
-                          It provides a JSON interface using the Aeson library.
+                          build with the Parsec library, and providing a JSON
+                          interface using the Aeson library.
 homepage:                 https://github.com/cies/htoml
 bug-reports:              https://github.com/cies/htoml/issues
 license:                  BSD3
 license-file:             LICENSE
+copyright:                (c) 2013-2014 Cies Breijs
 author:                   Cies Breijs
-maintainer:               Cies Breijs
-category:                 Text
+maintainer:               Cies Breijs <cies % kde ! nl>
+category:                 Data, Text, Parser, Configuration, JSON, Language
+stability:                provisional
 build-type:               Simple
 cabal-version:            >= 1.10
 extra-source-files:       README.md
+                        , CHANGES.md
                         , test/BurntSushi/fetch-toml-tests.sh
                         , test/BurntSushi/valid/*.toml
                         , test/BurntSushi/valid/*.json
@@ -36,15 +38,15 @@ library
   ghc-options:            -Wall
   hs-source-dirs:         src
   default-language:       Haskell2010
-  build-depends:          base             >= 4.6  && < 5
-                        , parsec         >= 3.1.5
-                        , containers     >= 0.5  && < 0.6
-                        , unordered-containers
-                        , vector
-                        , aeson
-                        , text
-                        , time           -any
-                        , old-locale     -any
+  build-depends:          base                   >= 4.3    && < 5
+                        , parsec                 >= 3.1.2  && < 4
+                        , containers             >= 0.5
+                        , unordered-containers   >= 0.2
+                        , vector                 >= 0.10
+                        , aeson                  >= 0.8
+                        , text                   >= 1.0    && < 2
+                        , time                   -any
+                        , old-locale             -any
 
 executable tests
   hs-source-dirs:         test
@@ -53,21 +55,21 @@ executable tests
   other-modules:          BurntSushi
                         , Text.Toml.Parser.Spec
   default-language:       Haskell2010
-  build-depends:          base             >= 4.6  && < 5
-                        , parsec         >= 3.1.5
-                        , containers     >= 0.5  && < 0.6
-                        , bytestring
-                        , file-embed
+  build-depends:          base
+                        , parsec
+                        , containers
                         , unordered-containers
                         , vector
                         , aeson
                         , text
-                        , time           -any
-                        , Cabal          >= 1.16.0
+                        , time
+                        , bytestring             >= 0.9
+                        , file-embed             >= 0.0.5
+                        , Cabal                  >= 1.16.0
+                        , tasty                  >= 0.10
+                        , tasty-hspec            >= 0.2
+                        , tasty-hunit            >= 0.9
                         , htoml
-                        , tasty
-                        , tasty-hspec
-                        , tasty-hunit
 
 test-suite Tests
   hs-source-dirs:         test
@@ -77,16 +79,16 @@ test-suite Tests
                         , Text.Toml.Parser.Spec
   type:                   exitcode-stdio-1.0
   default-language:        Haskell2010
-  build-depends:          base             >= 4.6  && < 5
-                        , parsec         >= 3.1.5
-                        , containers     >= 0.5  && < 0.6
+  build-depends:          base
+                        , parsec
+                        , containers
                         , bytestring
                         , file-embed
                         , unordered-containers
                         , vector
                         , text
-                        , time           -any
-                        , Cabal          >= 1.16.0
+                        , time
+                        , Cabal
                         , htoml
                         , tasty
                         , tasty-hspec
@@ -98,14 +100,14 @@ benchmark benchmarks
   main-is:                Benchmarks.hs
   type:                   exitcode-stdio-1.0
   default-language:       Haskell2010
-  build-depends:          base             >= 4.6  && < 5
-                        , parsec         >= 3.1.5
-                        , containers     >= 0.5  && < 0.6
+  build-depends:          base
+                        , parsec
+                        , containers
                         , unordered-containers
                         , vector
                         , aeson
                         , text
-                        , time           -any
-                        , Cabal          >= 1.16.0
+                        , time
+                        , Cabal
                         , htoml
                         , criterion
