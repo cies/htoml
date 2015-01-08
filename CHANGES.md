@@ -2,6 +2,12 @@ Change log
 ==========
 
 #### dev
+* ...
+
+#### 0.1.0.2
+* Updated the REAMDE
+* Added/relaxed dependency version contraints where applicable
+* Fixed all warnings
 * Added `CHANGES.md`
 
 #### 0.1.0.1
