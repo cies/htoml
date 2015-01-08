@@ -23,13 +23,22 @@ The documentation for this package may (or may not) be found on
 
 ### Quick start
 
-To quickly show some features of `htoml` we use `GHCi`, from the
-root of the repository run:
+Installing `htoml` is easy.
 
-    cabal repl
+    cabal install htoml
 
-It picks up configuration from the `.ghci` file, so we can immediately
-start exploring:
+In order to make your project depend on it you can add it as a
+dependency in your project's cabal file.
+
+To quickly show some features of `htoml` we start `GHCi` from the
+root of the repository so it picks up configuration from the
+`.ghci` file that lives there.
+
+    git clone https://github.com/cies/htoml.git
+    cd htoml
+    cabal repl  ;# this starts GHCi
+
+We can immediately start exploring from the `GHCi` prompt.
 
     > txt <- readFile "benchmarks/example.toml"
     > let r = parseTomlDoc "" txt
@@ -46,7 +55,18 @@ start exploring:
     unexpected '='
     expecting "#", "[" or end of input
 
-First notice that some outputs are truncated.
+Notice that some outputs are truncated, indicated by `[...]`.
+
+
+### Version contraints of `htoml`'s dependencies
+
+If you encounter any problems because `htoml`'s dependecies are
+constrained either too much or too little, please
+[file a issue](https://github.com/cies/htoml/issues) for that.
+
+I will try to have `htoml` included in [Stackage](http://stackage.org)
+as soon as it is reviewed by the community. Stackage provides a very
+attractive solution to most (dependency) version conflicts.
 
 
 ### Tests and benchmarks
@@ -80,9 +100,9 @@ much appreciated.
 * Provides a JSON interface (suggested by Greg Weber)
 * Useful error messages (thanks to using Parsec over Attoparsec)
 * Understands arrays as described in [this issue](https://github.com/toml-lang/toml/issues/254)
-* Provides a benchmark suite
 * Fails on mix-type arrays (as per spec)
-* Haddock documentation
+* Provides a benchmark suite
+* Tries to be well documented (please raise an issue if you find documentation lacking)
 
 
 ### Todo
@@ -103,6 +123,12 @@ Originally this project started off by improving the `toml` package by
 Spiros Eliopoulos.
 
 
-### License
+### Copyright and licensing
 
-BSD3 as found in the `LICENSE` file.
+This package includes BurntSushi's language agnostic
+[TOML tests](https://github.com/BurntSushi/toml-test), which are WTFPL
+licensed.
+
+For all other files in this project the copyrights are specified in the
+`htoml.cabal` file, and are distributed under the BSD3 as found in the
+`LICENSE` file.
