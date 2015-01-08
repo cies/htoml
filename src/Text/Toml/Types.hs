@@ -61,10 +61,10 @@ insert ([name], node) ttbl =
           Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
                                      , "), from table named '", name, "'." ]
           Right r -> Right $ M.insert name (NTable r) ttbl
-        (NTArray _) -> commonInsertError node [name]
+        _         -> commonInsertError node [name]
       Just (NTArray a)  -> case node of
-        (NTable _) -> commonInsertError node [name]
         (NTArray na) -> Right $ M.insert name (NTArray $ a ++ na) ttbl
+        _         -> commonInsertError node [name]
       Just _            -> commonInsertError node [name]
 insert (fullName@(name:ns), node) ttbl =
     -- In case 'name' is not final, but a sub-name
@@ -93,11 +93,13 @@ merge existing new = case intersect (M.keys existing) (M.keys new) of
 
 -- | Convenience function to construct a common error message for the 'insert' function.
 commonInsertError :: Node -> [Text] -> Either Text Table
-commonInsertError what name =
-  let w = case what of (NTable _) -> "tables"
-                       _          -> "array of tables"
-      n = T.intercalate "." name
-  in  Left $ T.concat ["Cannot insert ", w, " '", n, "' as key already exists."]
+commonInsertError what name = Left . T.concat $ case what of
+    NTValue _ -> ["Cannot insert a value '", n, "'."]
+    _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
+  where
+    n = T.intercalate "." name
+    w = case what of (NTable _) -> "tables"
+                     _          -> "array of tables"
 
 
 

@@ -12,7 +12,7 @@ import           Control.Applicative hiding (many, optional, (<|>))
 import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
 import qualified Data.Set            as S
-import           Data.Text           (Text, concat, pack, unpack)
+import           Data.Text           (Text, pack, unpack)
 import           Data.Time.Format    (parseTime)
 import           Numeric             (readHex)
 import           System.Locale       (defaultTimeLocale, iso8601DateFormat)
@@ -183,7 +183,7 @@ datetime = do
 float :: Parser TValue
 float = VFloat <$> do
     n <- intStr
-    char '.'
+    _ <- char '.'
     d <- uintStr
     e <- try (satisfy (\c -> c == 'e' || c == 'E') *> intStr) <|> return "0"
     return . read . L.concat $ [n, ".", d, "e", e]
