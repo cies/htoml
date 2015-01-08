@@ -129,6 +129,9 @@ This package includes BurntSushi's language agnostic
 [TOML tests](https://github.com/BurntSushi/toml-test), which are WTFPL
 licensed.
 
+The TOML examples that are used as part of the benchmarks are copied
+from Tom Preston-Werner's TOML spec which is MIT licensed.
+
 For all other files in this project the copyrights are specified in the
-`htoml.cabal` file, and are distributed under the BSD3 as found in the
-`LICENSE` file.
+`htoml.cabal` file, and are distributed under the BSD3 license as found
+in the `LICENSE` file.
