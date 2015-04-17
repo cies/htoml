@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Text.Toml.Parser
@@ -13,9 +14,9 @@ import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
 import qualified Data.Set            as S
 import           Data.Text           (Text, pack, unpack)
-import           Data.Time.Format    (parseTime)
+import           Data.Time.Format    (defaultTimeLocale, iso8601DateFormat,
+                                      parseTimeM)
 import           Numeric             (readHex)
-import           System.Locale       (defaultTimeLocale, iso8601DateFormat)
 import           Text.Parsec
 import           Text.Parsec.Text
 
@@ -78,7 +79,7 @@ tableHeader = between (char '[') (char ']') headerValue
 
 -- | Parses a table array header.
 tableArrayHeader :: Parser [Text]
-tableArrayHeader = between (twoChar  '[') (twoChar ']') headerValue
+tableArrayHeader = between (twoChar '[') (twoChar ']') headerValue
   where
     twoChar c = count 2 (char c)
 
@@ -174,7 +175,7 @@ multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuo
 datetime :: Parser TValue
 datetime = do
     d <- manyTill anyChar (try $ char 'Z')
-    let  mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") d
+    let  mt = parseTimeM True defaultTimeLocale (iso8601DateFormat $ Just "%X") d
     case mt of Just t  -> return $ VDatetime t
                Nothing -> fail "parsing datetime failed"
 
