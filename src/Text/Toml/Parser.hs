@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP               #-}
 
 module Text.Toml.Parser
   ( module Text.Toml.Parser
@@ -14,8 +15,15 @@ import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
 import qualified Data.Set            as S
 import           Data.Text           (Text, pack, unpack)
+
+#if MIN_VERSION_time(1,5,0)
 import           Data.Time.Format    (defaultTimeLocale, iso8601DateFormat,
                                       parseTimeM)
+#else
+import           Data.Time.Format    (parseTime)
+import           System.Locale       (defaultTimeLocale, iso8601DateFormat)
+#endif
+
 import           Numeric             (readHex)
 import           Text.Parsec
 import           Text.Parsec.Text
@@ -175,7 +183,11 @@ multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuo
 datetime :: Parser TValue
 datetime = do
     d <- manyTill anyChar (try $ char 'Z')
+#if MIN_VERSION_time(1,5,0)
     let  mt = parseTimeM True defaultTimeLocale (iso8601DateFormat $ Just "%X") d
+#else
+    let  mt = parseTime defaultTimeLocale (iso8601DateFormat $ Just "%X") d
+#endif
     case mt of Just t  -> return $ VDatetime t
                Nothing -> fail "parsing datetime failed"
 
