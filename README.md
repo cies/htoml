@@ -58,6 +58,42 @@ We can immediately start exploring from the `GHCi` prompt.
 Notice that some outputs are truncated, indicated by `[...]`.
 
 
+### How to pull data from a TOML file after parsing it
+
+Once you have sucessfully parsed a TOML file you most likely want to pull
+some piecces of data out of the resulting data structure.
+
+To do so you have two main options. The first is to use pattern matching.
+For example let's consider the following `parseResult`:
+
+```haskell
+Right (fromList [("server",NTable (fromList [("enabled",NTValue (VBoolean True))] ) )] )
+```
+
+Which could be pattern matched with:
+
+```haskell
+case parseResult of
+  Left e -> "Could not parse file"
+  Right m -> case m ! "server" of
+    NTable mm -> case mm ! "enabled" of
+      VBoolen b -> if b then "Server is enabled"
+                        else "Server is disabled"
+      _ -> "Could not parse server status (Boolean)"
+    _ -> "TOML file does not contain the 'server' key"
+```
+
+The second main option is to use the `toJSON` function to transform the data
+to an [Aeson](https://hackage.haskell.org/package/aeson) data structure,
+after which you can use your Aeson toolbelt to tackle the problem. Since
+TOML is intended to be a close cousin of JSON this is a very practical
+approach.
+
+Other ways to pull data from a parsed TOML document will most likely
+exist; maybe the `lens` library can give great results in some cases.
+But I have no experience with them.
+
+
 ### Version contraints of `htoml`'s dependencies
 
 If you encounter any problems because `htoml`'s dependecies are
@@ -94,14 +130,14 @@ much appreciated.
 
 ### Features
 
-* Follows the latest version of the TOML spec, proven by an extensive test suite
+* Compatibility to the TOML spec is proven by an extensive test suite
 * Incorporates [BurntSushi's language agnostic test suite](https://github.com/BurntSushi/toml-test)
 * Has an internal representation that easily maps to JSON
-* Provides a JSON interface (suggested by Greg Weber)
+* Provides an [Aeson](https://hackage.haskell.org/package/aeson)-style JSON interface (suggested by Greg Weber)
 * Useful error messages (thanks to using Parsec over Attoparsec)
 * Understands arrays as described in [this issue](https://github.com/toml-lang/toml/issues/254)
 * Fails on mix-type arrays (as per spec)
-* Provides a benchmark suite
+* Comes with a benchmark suite to make performance gains/regressions measurable
 * Tries to be well documented (please raise an issue if you find documentation lacking)
 
 
@@ -109,8 +145,7 @@ much appreciated.
 
 * Release a stable 1.0 release and submit it to [Stackage](http://stackage.org)
 * More documentation
-* Moke all tests pass (currently some more obscure corner cases don't pass)
-* Add more tests (maybe find a more mature TOML parser and steal their tests)
+* Make all tests pass (currently some more obscure corner cases don't pass)
 * Add property tests with QuickCheck (the internet says it's possible for parsers)
 * Extensively test error cases
 * Try using Vector instead of List (measure performance increase with the benchmarks)
