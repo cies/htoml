@@ -36,7 +36,9 @@ root of the repository so it picks up configuration from the
 
     git clone https://github.com/cies/htoml.git
     cd htoml
-    cabal repl  ;# this starts GHCi
+    cabal sandbox init  ;# initialize a cabal sandbox
+    cabal install       ;# install the dependencies and build all
+    cabal repl          ;# starts a sandbox-aware GHCi
 
 We can immediately start exploring from the `GHCi` prompt.
 
@@ -50,7 +52,7 @@ We can immediately start exploring from the `GHCi` prompt.
     Object (fromList [("database",Object (fromList [("enabled",Bool True) [...]
 
     > let Left error = parseTomlDoc "" "== invalid toml =="
-    > error
+    > e
     (line 1, column 1):
     unexpected '='
     expecting "#", "[" or end of input
@@ -74,11 +76,10 @@ Which could be pattern matched with:
 
 ```haskell
 case parseResult of
-  Left e -> "Could not parse file"
+  Left  _ -> "Could not parse file"
   Right m -> case m ! "server" of
     NTable mm -> case mm ! "enabled" of
-      VBoolen b -> if b then "Server is enabled"
-                        else "Server is disabled"
+      VBoolean b -> "Server is " ++ (if b then "enabled" else "disabled")
       _ -> "Could not parse server status (Boolean)"
     _ -> "TOML file does not contain the 'server' key"
 ```
