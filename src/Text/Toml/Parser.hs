@@ -195,9 +195,8 @@ datetime = do
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
 float :: Parser TValue
 float = VFloat <$> do
-    n <- intStr
-    _ <- char '.'
-    d <- uintStr
+    n <- intStr <* lookAhead (satisfy (\c -> c == '.' || c == 'e' || c == 'E'))
+    d <- try (satisfy (== '.') *> uintStr) <|> return "0"
     e <- try (satisfy (\c -> c == 'e' || c == 'E') *> intStr) <|> return "0"
     return . read . L.concat $ [n, ".", d, "e", e]
   where
