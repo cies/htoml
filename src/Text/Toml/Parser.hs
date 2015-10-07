@@ -11,6 +11,7 @@ module Text.Toml.Parser
 import           Prelude             hiding (concat, takeWhile)
 
 import           Control.Applicative hiding (many, optional, (<|>))
+import           Control.Monad       (when)
 import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
 import qualified Data.Set            as S
@@ -43,6 +44,13 @@ tomlDoc = do
     skipBlanks
     topTable <- table
     namedSections <- many namedSection
+
+    let tables = let f (_, (NTable _)) = True
+                     f _               = False
+                 in filter f namedSections
+
+    failOnDuplicates (L.intercalate "." . map unpack) tables
+
     eof  -- ensures input is completely consumed
     case join topTable (reverse namedSections) of
       Left msg -> fail (unpack msg)  -- TODO: allow Text in Parse Errors
@@ -53,18 +61,26 @@ tomlDoc = do
                                           Right r  -> insert x r
 
 
+failOnDuplicates :: Ord a => (a -> String) -> [(a, b)] -> Parser ()
+failOnDuplicates show' ks = do
+  let duplicates = dupes $ map fst ks
+  when (not $ null duplicates) $ fail $ L.concat [ "Overlapping keys: "
+                                                 , L.intercalate ", "
+                                                   $ map show'
+                                                   $ duplicates ]
+  where
+    dupes :: Ord a => [a] -> [a]
+    dupes xs = let xs' = L.sort xs
+               in L.concat
+                  $ zipWith (\x y -> if x == y then [x] else []) xs (tail xs)
+
+
 -- | Parses a table of key-value pairs.
 table :: Parser Table
 table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
-    case hasDup (map fst pairs) of
-      Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
-      Nothing -> return $ M.fromList (map (\(k, v) -> (k, NTValue v)) pairs)
-  where
-    hasDup        :: Ord a => [a] -> Maybe a
-    hasDup xs     = dup' xs S.empty
-    dup' []     _ = Nothing
-    dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
+    failOnDuplicates (\x -> "\"" ++ unpack x ++ "\"") pairs
+    return $ M.fromList (map (\(k, v) -> (k, NTValue v)) pairs)
 
 
 -- | Parses a 'Table' or 'TableArray' with its header.
