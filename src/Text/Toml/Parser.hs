@@ -186,7 +186,7 @@ multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuo
 
 datetime :: Parser TValue
 datetime = do
-    d <- manyTill anyChar (try $ char 'Z')
+    d <- try $ manyTill anyChar (char 'Z')
 #if MIN_VERSION_time(1,5,0)
     let  mt = parseTimeM True defaultTimeLocale (iso8601DateFormat $ Just "%X") d
 #else
