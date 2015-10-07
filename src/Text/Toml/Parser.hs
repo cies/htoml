@@ -79,6 +79,13 @@ namedSection = do
     return $ case eitherHdr of Left  ns -> (ns, NTable   tbl )
                                Right ns -> (ns, NTArray [tbl])
 
+-- | Parses a table key/name
+tableKey :: Parser Text
+tableKey = bareKey <|> rawQuotedStr
+  where
+    bareKey = pack <$> (many1 $ satisfy $ \ch -> ch `elem` keyChars)
+    keyChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "_-"
+
 
 -- | Parses a table header.
 tableHeader :: Parser [Text]
@@ -94,23 +101,16 @@ tableArrayHeader = between (twoChar '[') (twoChar ']') headerValue
 
 -- | Parses the value of any header (names separated by dots), into a list of 'Text'.
 headerValue :: Parser [Text]
-headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
-  where
-    headerNameChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                                    c /= '[' && c /= ']'  && c /= '.'  && c /= '#')
+headerValue = (skipSpaces *> tableKey <* skipSpaces) `sepBy1` (char '.')
 
 
 -- | Parses a key-value assignment.
 assignment :: Parser (Text, TValue)
 assignment = do
-    k <- pack <$> many1 keyChar
-    skipBlanks >> char '=' >> skipBlanks
+    k <- skipBlanks *> tableKey
+    skipSpaces >> char '=' >> skipSpaces
     v <- value
     return (k, v)
-  where
-    -- TODO: Follow the spec, e.g.: only first char cannot be '['.
-    keyChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                             c /= '=' && c /= '#'  && c /= '[')
 
 
 -- | Parses a value.
@@ -145,11 +145,15 @@ anyStr :: Parser TValue
 anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
 
 
-basicStr :: Parser TValue
-basicStr = VString <$> between dQuote dQuote (fmap pack $ many strChar)
+rawQuotedStr :: Parser Text
+rawQuotedStr = between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
+
+
+basicStr :: Parser TValue
+basicStr = VString <$> rawQuotedStr
 
 
 multiBasicStr :: Parser TValue
@@ -267,6 +271,10 @@ skipBlanks = skipMany blank
   where
     blank   = try ((many1 $ satisfy isSpc) >> return ()) <|> try comment <|> try eol
     comment = char '#' >> (many $ satisfy (/= '\n')) >> return ()
+
+-- | Parses the string that containing whitespaces (but not newline or EOF)
+skipSpaces :: Parser ()
+skipSpaces = try (many $ satisfy isSpc) *> return ()
 
 
 -- | Results in 'True' for whitespace chars, tab or space, according to spec.
