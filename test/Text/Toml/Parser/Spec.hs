@@ -42,7 +42,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
         fromList [("a", NTable (fromList [("aa", NTValue $ VInteger 108)] ))]
 
     it "should not parse redefined table header (key already exists at scope)" $
-      testParser tomlDoc "[a]\n[a]" $ fromList [("a", emptyNTable)]
+      testParserFails tomlDoc "[a]\n[a]"
 
     it "should parse redefinition of implicit key" $
       testParser tomlDoc "[a.b]\n[a]" $
@@ -185,13 +185,13 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
       testParser assignment "a=108" ("a", VInteger 108)
 
     it "should parse when value on next line" $
-      testParser assignment "a =\n108" ("a", VInteger 108)
+      testParserFails assignment "a =\n108"
 
     it "should parse when assignment operator and value are on the next line" $
-      testParser assignment "a\n= 108" ("a", VInteger 108)
+      testParserFails assignment "a\n= 108"
 
     it "should parse when key, value and assignment operator are on separate lines" $
-      testParser assignment "a\n=\n108" ("a", VInteger 108)
+      testParserFails assignment "a\n=\n108"
 
 
   describe "Parser.boolean" $ do
