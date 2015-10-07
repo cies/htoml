@@ -196,9 +196,9 @@ datetime = do
 float :: Parser TValue
 float = VFloat <$> do
     n <- intStr
-    _ <- char '.'
-    d <- uintStr
-    e <- try (satisfy (\c -> c == 'e' || c == 'E') *> intStr) <|> return "0"
+    (d, e) <- ((,) <$> (char '.' >> uintStr) <*> (ex <|> return "0"))
+              <|>
+              ((,)     "0"                   <$> ex)
     return . read . L.concat $ [n, ".", d, "e", e]
   where
     sign    = try (string "-") <|> (try (char '+') >> return "") <|> return ""
@@ -206,6 +206,7 @@ float = VFloat <$> do
     intStr  = do s <- sign
                  u <- uintStr
                  return . L.concat $ [s, u]
+    ex      = try (satisfy (\c -> c == 'e' || c == 'E') *> intStr)
 
 
 integer :: Parser TValue
