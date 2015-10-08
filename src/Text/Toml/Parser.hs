@@ -172,16 +172,16 @@ basicStr = VString <$> rawQuotedStr
 
 
 multiBasicStr :: Parser TValue
-multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
+multiBasicStr = VString <$> (openDQuote3 *> (fmap (pack . L.concat) $ manyTill strChar dQuote3))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
     -- | Parse tripple-double quotes
     dQuote3     = count 3 $ char '"'
-    -- | Parse a string char, accepting escaped codes, ignoring escaped white space
-    strChar     = escWhiteSpc *> (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
-    -- | Parse escaped white space, if any
-    escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
+    -- | Parse a string char, accepting escaped codes, ignoring escaped white spaces
+    strChar     = (escWhiteSpc *> return "") <|> fmap (:[]) (escSeq <|> (satisfy (/= '\\')))
+    -- | Parse escaped white space
+    escWhiteSpc = many1 $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
 
 literalStr :: Parser TValue
