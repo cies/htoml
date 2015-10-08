@@ -14,7 +14,6 @@ import           Control.Applicative hiding (many, optional, (<|>))
 import           Control.Monad       (when)
 import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
-import qualified Data.Set            as S
 import           Data.Text           (Text, pack, unpack)
 
 #if MIN_VERSION_time(1,5,0)
@@ -72,7 +71,7 @@ failOnDuplicates show' ks = do
     dupes :: Ord a => [a] -> [a]
     dupes xs = let xs' = L.sort xs
                in L.concat
-                  $ zipWith (\x y -> if x == y then [x] else []) xs (tail xs)
+                  $ zipWith (\x y -> if x == y then [x] else []) xs' (tail xs')
 
 
 -- | Parses a table of key-value pairs.
