@@ -59,7 +59,7 @@ table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
     case hasDup (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
-      Nothing -> return $ M.fromList (map (\(k, v) -> (k, NTValue v)) pairs)
+      Nothing -> return $ M.fromList (map (\(k, v) -> (k, v)) pairs)
   where
     hasDup        :: Ord a => [a] -> Maybe a
     hasDup xs     = dup' xs S.empty
@@ -76,8 +76,8 @@ namedSection = do
     skipBlanks
     tbl <- table
     skipBlanks
-    return $ case eitherHdr of Left  ns -> (ns, NTable   tbl )
-                               Right ns -> (ns, NTArray [tbl])
+    return $ case eitherHdr of Left  ns -> (ns, VTable   tbl )
+                               Right ns -> (ns, VTArray [tbl])
 
 
 -- | Parses a table header.
@@ -101,7 +101,7 @@ headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
 
 
 -- | Parses a key-value assignment.
-assignment :: Parser (Text, TValue)
+assignment :: Parser (Text, Node)
 assignment = do
     k <- pack <$> many1 keyChar
     skipBlanks >> char '=' >> skipBlanks
@@ -114,7 +114,7 @@ assignment = do
 
 
 -- | Parses a value.
-value :: Parser TValue
+value :: Parser Node
 value = (try array    <?> "array")
     <|> (try boolean  <?> "boolean")
     <|> (try anyStr   <?> "string")
@@ -127,7 +127,7 @@ value = (try array    <?> "array")
 -- | * Toml value parsers
 --
 
-array :: Parser TValue
+array :: Parser Node
 array = (try (arrayOf array)    <?> "array of arrays")
     <|> (try (arrayOf boolean)  <?> "array of booleans")
     <|> (try (arrayOf anyStr)   <?> "array of strings")
@@ -136,23 +136,23 @@ array = (try (arrayOf array)    <?> "array of arrays")
     <|> (try (arrayOf integer)  <?> "array of integers")
 
 
-boolean :: Parser TValue
+boolean :: Parser Node
 boolean = VBoolean <$> ( (try . string $ "true")  *> return True  <|>
                          (try . string $ "false") *> return False )
 
 
-anyStr :: Parser TValue
+anyStr :: Parser Node
 anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
 
 
-basicStr :: Parser TValue
+basicStr :: Parser Node
 basicStr = VString <$> between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
 
 
-multiBasicStr :: Parser TValue
+multiBasicStr :: Parser Node
 multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
@@ -165,13 +165,13 @@ multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote
     escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
 
-literalStr :: Parser TValue
+literalStr :: Parser Node
 literalStr = VString <$> between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
   where
     sQuote = char '\''
 
 
-multiLiteralStr :: Parser TValue
+multiLiteralStr :: Parser Node
 multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3))
   where
     -- | Parse the a tripple-single quote, with possibly a newline attached
@@ -180,7 +180,7 @@ multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuo
     sQuote3     = try . count 3 . char $ '\''
 
 
-datetime :: Parser TValue
+datetime :: Parser Node
 datetime = do
     d <- manyTill anyChar (try $ char 'Z')
 #if MIN_VERSION_time(1,5,0)
@@ -193,7 +193,7 @@ datetime = do
 
 
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
-float :: Parser TValue
+float :: Parser Node
 float = VFloat <$> do
     n <- intStr <* lookAhead (satisfy (\c -> c == '.' || c == 'e' || c == 'E'))
     d <- try (satisfy (== '.') *> uintStr) <|> return "0"
@@ -207,7 +207,7 @@ float = VFloat <$> do
                  return . L.concat $ [s, u]
 
 
-integer :: Parser TValue
+integer :: Parser Node
 integer = VInteger <$> (signed $ read <$> (many1 digit))
 
 
@@ -217,7 +217,7 @@ integer = VInteger <$> (signed $ read <$> (many1 digit))
 --
 
 -- | Parses the elements of an array, while restricting them to a certain type.
-arrayOf :: Parser TValue -> Parser TValue
+arrayOf :: Parser Node -> Parser Node
 arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedValues)
   where
     separatedValues = sepEndBy (skipBlanks *> p <* skipBlanks) comma <* skipBlanks
