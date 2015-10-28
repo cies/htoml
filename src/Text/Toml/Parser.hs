@@ -210,15 +210,16 @@ float = VFloat <$> do
     return . read . L.concat $ [n, ".", d, "e", e]
   where
     sign    = try (string "-") <|> (try (char '+') >> return "") <|> return ""
-    uintStr = many1 digit
+    uintStr = (:) <$> digit <*> many (optional (char '_') *> digit)
     intStr  = do s <- sign
                  u <- uintStr
                  return . L.concat $ [s, u]
 
 
 integer :: Parser Node
-integer = VInteger <$> (signed $ read <$> (many1 digit))
-
+integer = VInteger <$> (signed $ read <$> uintStr)
+  where
+    uintStr = (:) <$> digit <*> many (optional (char '_') *> digit)
 
 --
 -- * Utility functions
