@@ -57,6 +57,10 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
       testParser tomlDoc "[a]\n[a.b]" $
         fromList [("a", VTable (fromList [("b", VTable emptyTable)] ))]
 
+    it "should parse inline tables the same as normal tables" $
+      testParser tomlDoc "[a]\nb={}" $
+        fromList [("a", VTable (fromList [("b", VTable emptyTable)] ))]
+
     it "should not parse redefinition key" $
       testParserFails tomlDoc "[a]\nb=1\n[a.b]"
 
@@ -399,6 +403,16 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse terminating commas in arrays(2)" $
       testParser array "[1,2,]" $ VArray [ VInteger 1, VInteger 2 ]
 
+  describe "Parser.tomlDoc inline tables" $ do
+
+    it "should parse an empty inline table" $
+      testParser inlineTable "{}" $ VTable (fromList [])
+
+    it "should parse simple inline tables" $
+      testParser inlineTable "{ a = 8 , b = \"things\" }" $ VTable (fromList [ ("a" , VInteger 8) , ("b", VString "things") ])
+
+    it "should not parse simple inline tables with newline " $
+      testParserFails inlineTable "{ a = 8 , \n b = \"things\" }"
 
   where
     testParser p str success = case parseOnly p str of Left  _ -> False
