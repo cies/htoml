@@ -226,6 +226,9 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse simple example" $
       testParser multiBasicStr "\"\"\"thorrough\"\"\"" $  "thorrough"
 
+    it "should parse text containing a quote" $
+      testParser multiBasicStr "\"\"\"is \"it\" complete\"\"\"" $ "is \"it\" complete"
+
     it "should parse with newlines" $
       testParser multiBasicStr "\"\"\"One\nTwo\"\"\"" $  "One\nTwo"
 
@@ -242,6 +245,9 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
                                \Jumped \\\n\
                                \Lazy\\\n\
                                \ \"\"\"" $  "Quick Jumped Lazy"
+
+    it "should parse espaced on first" $
+      testParser multiBasicStr "\"\"\"\\\nQuick \\\n\\\nJumped \\\nLazy\\\n\"\"\"" $  "Quick Jumped Lazy"
 
 
   describe "Parser.literalStr" $ do

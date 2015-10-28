@@ -166,7 +166,7 @@ basicStr = between dQuote dQuote (fmap pack $ many strChar)
 
 
 multiBasicStr :: Parser Text
-multiBasicStr = (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
+multiBasicStr = (openDQuote3 *> (fmap pack $ manyTill strChar (try dQuote3)))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
