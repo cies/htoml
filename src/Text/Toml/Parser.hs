@@ -57,12 +57,20 @@ tomlDoc = do
 table :: Parser Table
 table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
-    case hasDup (map fst pairs) of
+    case hasDup' (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
       Nothing -> return $ M.fromList (map (\(k, v) -> (k, v)) pairs)
+
+inlineTable :: Parser Node
+inlineTable = do
+    pairs <- try $ char '{' *> many (satisfy isSpc) *> ((assignment <* many (satisfy isSpc)) `sepBy` (char ',')) <* char '}'
+    case hasDup' (map fst pairs) of
+      Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
+      Nothing -> return $ VTable $ M.fromList (map (\(k, v) -> (k, v)) pairs)
+
+hasDup'        :: Ord a => [a] -> Maybe a
+hasDup' xx     = dup' xx S.empty
   where
-    hasDup        :: Ord a => [a] -> Maybe a
-    hasDup xs     = dup' xs S.empty
     dup' []     _ = Nothing
     dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
 
@@ -115,12 +123,13 @@ assignment = do
 
 -- | Parses a value.
 value :: Parser Node
-value = (try array    <?> "array")
-    <|> (try boolean  <?> "boolean")
-    <|> (try anyStr   <?> "string")
-    <|> (try datetime <?> "datetime")
-    <|> (try float    <?> "float")
-    <|> (try integer  <?> "integer")
+value = (try array       <?> "array")
+    <|> (try boolean     <?> "boolean")
+    <|> (try anyStr      <?> "string")
+    <|> (try datetime    <?> "datetime")
+    <|> (try float       <?> "float")
+    <|> (try integer     <?> "integer")
+    <|> (try inlineTable <?> "inline table")
 
 
 --
@@ -209,7 +218,6 @@ float = VFloat <$> do
 
 integer :: Parser Node
 integer = VInteger <$> (signed $ read <$> (many1 digit))
-
 
 
 --
