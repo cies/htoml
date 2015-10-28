@@ -42,7 +42,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
         fromList [("a", VTable (fromList [("aa", VInteger 108)] ))]
 
     it "should not parse redefined table header (key already exists at scope)" $
-      testParser tomlDoc "[a]\n[a]" $ fromList [("a", VTable emptyTable)]
+      testParserFails tomlDoc "[a]\n[a]"
 
     it "should parse redefinition of implicit key" $
       testParser tomlDoc "[a.b]\n[a]" $
