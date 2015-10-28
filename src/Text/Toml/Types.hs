@@ -38,7 +38,7 @@ emptyTable = M.empty
 -- It may result in an error ('Text') on the 'Left' or a modified table
 -- on the 'Right'.
 insert :: ([Text], Node) -> Table -> Either Text Table
-insert ([], _)         _ = error "FATAL: Cannot call 'insert' without a name."
+insert ([], _)         _ = Left "FATAL: Cannot call 'insert' without a name."
 insert ([name], node) ttbl =
     -- In case 'name' is final
     case M.lookup name ttbl of
@@ -62,7 +62,7 @@ insert (fullName@(name:ns), node) ttbl =
       Just (VTable t)   -> case insert (ns, node) t of
                              Left msg -> Left msg
                              Right tt -> Right $ M.insert name (VTable tt) ttbl
-      Just (VTArray []) -> error "FATAL: Call to 'insert' found impossibly empty VArray."
+      Just (VTArray []) -> Left "FATAL: Call to 'insert' found impossibly empty VArray."
       Just (VTArray a)  -> case insert (ns, node) (last a) of
                              Left msg -> Left msg
                              Right t  -> Right $ M.insert name (VTArray $ (init a) ++ [t]) ttbl

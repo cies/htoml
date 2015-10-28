@@ -112,7 +112,7 @@ headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
 assignment :: Parser (Text, Node)
 assignment = do
     k <- pack <$> many1 keyChar
-    skipBlanks >> char '=' >> skipBlanks
+    many (satisfy isSpc) >> char '=' >> skipBlanks
     v <- value
     return (k, v)
   where
