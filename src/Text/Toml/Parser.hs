@@ -59,14 +59,18 @@ table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
     case hasDup' (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
-      Nothing -> return $ M.fromList (map (\(k, v) -> (k, v)) pairs)
+      Nothing -> return $ M.fromList pairs
 
 inlineTable :: Parser Node
 inlineTable = do
-    pairs <- between (char '{') (char '}') $ many (satisfy isSpc) *> ((assignment <* many (satisfy isSpc)) `sepBy` (char ','))
+    pairs <- between (char '{') (char '}') (skipSpaces *> separatedValues <* skipSpaces)
     case hasDup' (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
-      Nothing -> return $ VTable $ M.fromList (map (\(k, v) -> (k, v)) pairs)
+      Nothing -> return $ VTable $ M.fromList pairs
+  where
+    skipSpaces      = many (satisfy isSpc)
+    separatedValues = sepBy (skipSpaces *> assignment <* skipSpaces) comma
+    comma           = skipSpaces >> char ',' >> skipSpaces
 
 hasDup'        :: Ord a => [a] -> Maybe a
 hasDup' xx     = dup' xx S.empty
@@ -118,7 +122,9 @@ assignment = do
   where
     -- TODO: Follow the spec, e.g.: only first char cannot be '['.
     keyChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                             c /= '=' && c /= '#'  && c /= '[')
+                             c /= '=' && c /= '#'  &&
+                             c /= '[' && c /= ']' &&
+                             c /= '{' && c /= '}')
 
 
 -- | Parses a value.
