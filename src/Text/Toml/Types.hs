@@ -49,9 +49,9 @@ insert ([name], node) ttbl =
                                      , "), from table named '", name, "'." ]
           Right r -> Right $ M.insert name (VTable r) ttbl
         _         -> commonInsertError node [name]
-      Just (VArray a)  -> case node of
-        (VArray na) -> Right $ M.insert name (VArray $ a ++ na) ttbl
-        _         -> commonInsertError node [name]
+      Just (VTArray a)  -> case node of
+        (VTArray na) -> Right $ M.insert name (VTArray $ a ++ na) ttbl
+        _            -> commonInsertError node [name]
       Just _            -> commonInsertError node [name]
 insert (fullName@(name:ns), node) ttbl =
     -- In case 'name' is not final, but a sub-name
@@ -130,8 +130,7 @@ instance (ToBsJSON v) => ToBsJSON (M.HashMap Text v) where
 -- As seen in this function, BurntSushi's JSON encoding explicitly
 -- specifies the types of the values.
 instance ToBsJSON Node where
-  toBsJSON (VTable v)    = object [ "type"  .= toJSON ("table" :: String)
-                                  , "value" .= toJSON v ]
+  toBsJSON (VTable v)    = toBsJSON v
   toBsJSON (VTArray v)   = toBsJSON v
   toBsJSON (VString v)   = object [ "type"  .= toJSON ("string" :: String)
                                   , "value" .= toJSON v ]
