@@ -1,7 +1,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Toml.Types where
+module Text.Toml.Types (
+    Table
+  , Node (VTable,VTArray,VString,VInteger,VFloat,VBoolean,VDatetime,VArray)
+  , ToBsJSON (..)
+  , foldTable
+  , emptyTable
+  , insert
+  ) where
 
 import           Data.Aeson.Types
 import qualified Data.HashMap.Strict as M
