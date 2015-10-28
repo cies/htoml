@@ -39,7 +39,7 @@ parseOnly p str = parse (p <* eof) "test" str
 
 -- | Parses a complete document formatted according to the TOML spec.
 tomlDoc :: Parser Table
-tomlDoc = do
+tomlDoc = fmap foldTable $ do
     skipBlanks
     topTable <- table
     namedSections <- many namedSection

@@ -19,6 +19,7 @@ type Table = M.HashMap Text Node
 
 -- | A 'Node' may contain any type of value that can put in a 'VArray'.
 data Node = VTable    Table
+          | VITable   Table
           | VTArray   [Table]
           | VString   Text
           | VInteger  Int64
@@ -28,6 +29,14 @@ data Node = VTable    Table
           | VArray    [Node]
   deriving (Eq, Show)
 
+-- Turn VITables in VTables
+foldTable :: Table -> Table
+foldTable = M.map go
+  where
+    go (VTable t) =  VTable $ foldTable t
+    go (VITable t) = VTable $ foldTable t
+    go (VTArray t) = VTArray $ fmap foldTable t
+    go other = other
 
 -- | Contruct an empty 'Table'.
 emptyTable :: Table
@@ -43,8 +52,18 @@ insert ([name], node) ttbl =
     -- In case 'name' is final
     case M.lookup name ttbl of
       Nothing           -> Right $ M.insert name node ttbl
-      Just (VTable t)   -> case node of
+      Just (VITable t)  -> case node of
+        (VITable nt) -> case merge t nt of
+          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
+                                     , "), from table named '", name, "'." ]
+          Right r -> Right $ M.insert name (VITable r) ttbl
         (VTable nt) -> case merge t nt of
+          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
+                                     , "), from table named '", name, "'." ]
+          Right r -> Right $ M.insert name (VTable r) ttbl
+        _         -> commonInsertError node [name]
+      Just (VTable t)   -> case node of
+        (VITable nt) -> case merge t nt of
           Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
                                      , "), from table named '", name, "'." ]
           Right r -> Right $ M.insert name (VTable r) ttbl
@@ -58,10 +77,13 @@ insert (fullName@(name:ns), node) ttbl =
     case M.lookup name ttbl of
       Nothing           -> case insert (ns, node) emptyTable of
                              Left msg -> Left msg
-                             Right r  -> Right $ M.insert name (VTable r) ttbl
+                             Right r  -> Right $ M.insert name (VITable r) ttbl
       Just (VTable t)   -> case insert (ns, node) t of
                              Left msg -> Left msg
                              Right tt -> Right $ M.insert name (VTable tt) ttbl
+      Just (VITable t)  -> case insert (ns, node) t of
+                             Left msg -> Left msg
+                             Right tt -> Right $ M.insert name (VITable tt) ttbl
       Just (VTArray []) -> Left "FATAL: Call to 'insert' found impossibly empty VArray."
       Just (VTArray a)  -> case insert (ns, node) (last a) of
                              Left msg -> Left msg
@@ -82,8 +104,9 @@ commonInsertError what name = Left . T.concat $ case what of
     _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
   where
     n = T.intercalate "." name
-    w = case what of (VTable _) -> "tables"
-                     _          -> "array of tables"
+    w = case what of (VTable _)  -> "tables"
+                     (VITable _) -> "tables"
+                     _           -> "array of tables"
 
 
 -- * Regular ToJSON instances
@@ -92,6 +115,7 @@ commonInsertError what name = Left . T.concat $ case what of
 -- in line with the TOML specification.
 instance ToJSON Node where
   toJSON (VTable v)    = toJSON v
+  toJSON (VITable v)   = toJSON v
   toJSON (VTArray v)   = toJSON v
   toJSON (VString v)   = toJSON v
   toJSON (VInteger v)  = toJSON v
@@ -131,6 +155,7 @@ instance (ToBsJSON v) => ToBsJSON (M.HashMap Text v) where
 -- specifies the types of the values.
 instance ToBsJSON Node where
   toBsJSON (VTable v)    = toBsJSON v
+  toBsJSON (VITable v)   = toBsJSON v
   toBsJSON (VTArray v)   = toBsJSON v
   toBsJSON (VString v)   = object [ "type"  .= toJSON ("string" :: String)
                                   , "value" .= toJSON v ]
