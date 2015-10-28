@@ -166,14 +166,14 @@ basicStr = between dQuote dQuote (fmap pack $ many strChar)
 
 
 multiBasicStr :: Parser Text
-multiBasicStr = (openDQuote3 *> (fmap pack $ manyTill strChar (try dQuote3)))
+multiBasicStr = (openDQuote3 *> escWhiteSpc *> (pack <$> manyTill strChar (try dQuote3)))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
     -- | Parse tripple-double quotes
     dQuote3     = count 3 $ char '"'
     -- | Parse a string char, accepting escaped codes, ignoring escaped white space
-    strChar     = escWhiteSpc *> (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
+    strChar     = (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
     -- | Parse escaped white space, if any
     escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
