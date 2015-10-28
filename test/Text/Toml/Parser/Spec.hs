@@ -297,6 +297,17 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should not accept floats without any decimals" $
       testParserFails float "5."
 
+    it "should accept floats which contain underscores" $
+      testParser float "5_3.4_5" $ VFloat 53.45
+
+    it "should not accept floats which end with underscores" $
+      testParserFails float "5_3.4_5_"
+
+    it "should not accept floats which start with underscores" $
+      testParserFails float "_5_3.4_5"
+
+    it "should not accept floats which have two consecutive underscores" $
+      testParserFails float "5__3.4__5"
 
   describe "Parser.integer" $ do
 
@@ -312,6 +323,17 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse integers prefixed with a plus" $
       testParser integer "+42" $ VInteger 42
 
+    it "should accept integers which contain underscores" $
+      testParser integer "4_2" $ VInteger 42
+
+    it "should not accept integers which end with underscores" $
+      testParserFails integer "4_2_"
+
+    it "should not accept integers which start with underscores" $
+      testParserFails integer "_4_2"
+
+    it "should not accept integers which have two consecutive underscores" $
+      testParserFails integer "4__2"
 
   describe "Parser.tomlDoc arrays" $ do
 
