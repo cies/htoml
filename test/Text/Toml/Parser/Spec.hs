@@ -187,13 +187,6 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse when value on next line" $
       testParser assignment "a =\n108" ("a", VInteger 108)
 
-    it "should parse when assignment operator and value are on the next line" $
-      testParser assignment "a\n= 108" ("a", VInteger 108)
-
-    it "should parse when key, value and assignment operator are on separate lines" $
-      testParser assignment "a\n=\n108" ("a", VInteger 108)
-
-
   describe "Parser.boolean" $ do
 
     it "should parse true" $

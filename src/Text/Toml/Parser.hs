@@ -63,7 +63,7 @@ table = do
 
 inlineTable :: Parser Node
 inlineTable = do
-    pairs <- try $ char '{' *> many (satisfy isSpc) *> ((assignment <* many (satisfy isSpc)) `sepBy` (char ',')) <* char '}'
+    pairs <- between (char '{') (char '}') $ many (satisfy isSpc) *> ((assignment <* many (satisfy isSpc)) `sepBy` (char ','))
     case hasDup' (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
       Nothing -> return $ VTable $ M.fromList (map (\(k, v) -> (k, v)) pairs)
@@ -283,4 +283,4 @@ isSpc c = c == ' ' || c == '\t'
 
 -- | Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n' or 0x0D a.k.a. '\r'.
 eol :: Parser ()
-eol = satisfy (\c -> c == '\n' || c == '\r') >> return ()
+eol = (string "\n" <|> string "\r\n") >> return ()
