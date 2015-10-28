@@ -115,16 +115,13 @@ headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
 -- | Parses a key-value assignment.
 assignment :: Parser (Text, Node)
 assignment = do
-    k <- pack <$> many1 keyChar
+    k <- (pack <$> many1 keyChar) <|> anyStr'
     many (satisfy isSpc) >> char '=' >> skipBlanks
     v <- value
     return (k, v)
   where
     -- TODO: Follow the spec, e.g.: only first char cannot be '['.
-    keyChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                             c /= '=' && c /= '#'  &&
-                             c /= '[' && c /= ']' &&
-                             c /= '{' && c /= '}')
+    keyChar = alphaNum <|> char '_' <|> char '-'
 
 
 -- | Parses a value.
@@ -157,18 +154,21 @@ boolean = VBoolean <$> ( (try . string $ "true")  *> return True  <|>
 
 
 anyStr :: Parser Node
-anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
+anyStr = VString <$> anyStr'
+
+anyStr' :: Parser Text
+anyStr' = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
 
 
-basicStr :: Parser Node
-basicStr = VString <$> between dQuote dQuote (fmap pack $ many strChar)
+basicStr :: Parser Text
+basicStr = between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
 
 
-multiBasicStr :: Parser Node
-multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
+multiBasicStr :: Parser Text
+multiBasicStr = (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
@@ -180,14 +180,14 @@ multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote
     escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
 
-literalStr :: Parser Node
-literalStr = VString <$> between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
+literalStr :: Parser Text
+literalStr = between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
   where
     sQuote = char '\''
 
 
-multiLiteralStr :: Parser Node
-multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3))
+multiLiteralStr :: Parser Text
+multiLiteralStr = (openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3))
   where
     -- | Parse the a tripple-single quote, with possibly a newline attached
     openSQuote3 = try (sQuote3 <* char '\n') <|> try sQuote3
@@ -235,7 +235,7 @@ integer = VInteger <$> (signed $ read <$> uintStr)
 arrayOf :: Parser Node -> Parser Node
 arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedValues)
   where
-    separatedValues = sepEndBy (skipBlanks *> p <* skipBlanks) comma <* skipBlanks
+    separatedValues = sepEndBy (skipBlanks *> try p <* skipBlanks) comma <* skipBlanks
     comma           = skipBlanks >> char ',' >> skipBlanks
 
 

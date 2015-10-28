@@ -206,10 +206,10 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
   describe "Parser.basicStr" $ do
 
     it "should parse the common escape sequences in basic strings" $
-      testParser basicStr "\"123\\b\\t\\n\\f\\r\\\"\\/\\\\\"" $ VString "123\b\t\n\f\r\"/\\"
+      testParser basicStr "\"123\\b\\t\\n\\f\\r\\\"\\/\\\\\"" $ "123\b\t\n\f\r\"/\\"
 
     it "should parse the simple unicode value from the example" $
-      testParser basicStr "\"中国\"" $ VString "中国"
+      testParser basicStr "\"中国\"" $ "中国"
 
     it "should parse escaped 4 digit unicode values" $
       testParser assignment "special_k = \"\\u0416\"" ("special_k", VString "Ж")
@@ -224,16 +224,16 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
   describe "Parser.multiBasicStr" $ do
 
     it "should parse simple example" $
-      testParser multiBasicStr "\"\"\"thorrough\"\"\"" $ VString "thorrough"
+      testParser multiBasicStr "\"\"\"thorrough\"\"\"" $  "thorrough"
 
     it "should parse with newlines" $
-      testParser multiBasicStr "\"\"\"One\nTwo\"\"\"" $ VString "One\nTwo"
+      testParser multiBasicStr "\"\"\"One\nTwo\"\"\"" $  "One\nTwo"
 
     it "should parse with escaped newlines" $
-      testParser multiBasicStr "\"\"\"One\\\nTwo\"\"\"" $ VString "OneTwo"
+      testParser multiBasicStr "\"\"\"One\\\nTwo\"\"\"" $  "OneTwo"
 
     it "should parse newlines, ignoring 1 leading newline" $
-      testParser multiBasicStr "\"\"\"\nOne\\\nTwo\"\"\"" $ VString "OneTwo"
+      testParser multiBasicStr "\"\"\"\nOne\\\nTwo\"\"\"" $  "OneTwo"
 
     it "should parse with espaced whitespace" $
       testParser multiBasicStr "\"\"\"\\\n\
@@ -241,14 +241,14 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
                                \\\\n\
                                \Jumped \\\n\
                                \Lazy\\\n\
-                               \ \"\"\"" $ VString "Quick Jumped Lazy"
+                               \ \"\"\"" $  "Quick Jumped Lazy"
 
 
   describe "Parser.literalStr" $ do
 
     it "should parse literally" $
       testParser literalStr "'\"Your\" folder: \\\\User\\new\\tmp\\'" $
-                            VString "\"Your\" folder: \\\\User\\new\\tmp\\"
+                             "\"Your\" folder: \\\\User\\new\\tmp\\"
 
     it "has no notion of 'escaped single quotes'" $
       testParserFails tomlDoc "q = 'I don\\'t know.'"  -- string terminates before the "t"
@@ -259,7 +259,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse literally" $
       testParser multiLiteralStr
         "'''\nFirst newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?'''"
-        $ VString "First newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?"
+        $  "First newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?"
 
 
   describe "Parser.datetime" $ do
