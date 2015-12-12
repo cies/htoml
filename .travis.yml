@@ -1,46 +1,29 @@
-# NB: don't set `language: haskell` here
-
+# Use new container infrastructure to enable caching
 sudo: false
 
-env:
-  - GHCVER=7.10.2 STACK_YAML=stack.yaml
-# 2015.07.20, builds with GHC HEAD fail: do not waste energy
-# - GHCVER=head STACK_YAML=stack.yaml
-#
-# matrix:
-#   allow_failures:
-#     - env: GHCVER=head STACK_YAML=stack.yaml
+# Choose a lightweight base image; we provide our own build tools.
+# NB: don't set `language: haskell` here
+language: c
+
+# GHC depends on GMP. You can add other dependencies here as well.
+addons:
+  apt:
+    packages:
+    - libgmp-dev
 
 before_install:
-  # put GHC in the path
-  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
+# Download and unpack the stack executable
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
-  # install stack
-  - mkdir -p ~/.local/bin
-  - export PATH=~/.local/bin:$PATH
-  - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.10.0/stack-0.1.10.0-linux-x86_64.tar.gz | gunzip > ~/.local/bin/stack
-  - chmod a+x ~/.local/bin/stack
-
-  # log versions
-  - stack --version
-  - ghc --version
-
-install:
-  - ./.travis_long.sh stack --no-terminal --skip-ghc-check setup
-  - ./.travis_long.sh stack --no-terminal --skip-ghc-check init
-  - ./.travis_long.sh stack --no-terminal --skip-ghc-check test --only-snapshot
-
+# This line does all of the work: installs GHC if necessary, build the library,
+# executables, and test suites, and runs the test suites. --no-terminal works
+# around some quirks in Travis's terminal implementation.
 script:
-  - stack --no-terminal --skip-ghc-check test
+- ./.travis_long.sh stack --no-terminal --install-ghc test
 
+# Caching so the next build will be fast.
 cache:
   directories:
   - $HOME/.stack
-
-addons:
-  apt:
-    sources:
-    - hvr-ghc
-    packages:
-    - ghc-7.10.2
-#    - ghc-head
