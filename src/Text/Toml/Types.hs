@@ -54,41 +54,32 @@ insert ([], _)         _ = error "FATAL: Cannot call 'insert' without a name."
 insert (_ , NTValue _) _ = error "FATAL: Cannot call 'insert' with a TValue."
 insert ([name], node) ttbl =
     -- In case 'name' is final
-    case M.lookup name ttbl of
-      Nothing           -> Right $ M.insert name node ttbl
-      Just (NTable t)   -> case node of
-        (NTable nt) -> case merge t nt of
-          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
-                                     , "), from table named '", name, "'." ]
-          Right r -> Right $ M.insert name (NTable r) ttbl
-        _         -> commonInsertError node [name]
-      Just (NTArray a)  -> case node of
-        (NTArray na) -> Right $ M.insert name (NTArray $ a ++ na) ttbl
-        _         -> commonInsertError node [name]
-      Just _            -> commonInsertError node [name]
+  (\x -> M.insert name x ttbl) <$>
+    case (M.lookup name ttbl, node) of
+      (Nothing,          _)          -> Right node
+      (Just (NTArray a), NTArray na) -> Right $ NTArray $ a ++ na
+      (Just (NTable t),  NTable  tt) -> NTable <$> merge t tt
+      _                              -> NTable <$> commonInsertError node [name]
 insert (fullName@(name:ns), node) ttbl =
     -- In case 'name' is not final, but a sub-name
     case M.lookup name ttbl of
-      Nothing           -> case insert (ns, node) emptyTable of
-                             Left msg -> Left msg
-                             Right r  -> Right $ M.insert name (NTable r) ttbl
-      Just (NTable t)   -> case insert (ns, node) t of
-                             Left msg -> Left msg
-                             Right tt -> Right $ M.insert name (NTable tt) ttbl
+      Nothing           -> insert' NTable emptyTable
+      Just (NTable t)   -> insert' NTable t
       Just (NTArray []) -> error "FATAL: Call to 'insert' found impossibly empty NTArray."
-      Just (NTArray a)  -> case insert (ns, node) (last a) of
-                             Left msg -> Left msg
-                             Right t  -> Right $ M.insert name (NTArray $ (init a) ++ [t]) ttbl
+      Just (NTArray a)  -> insert' (\t -> NTArray $ init a ++ [t]) (last a)
       Just _            -> commonInsertError node fullName
+  where
+    insert' f t = (\x -> M.insert name (f x) ttbl) <$> insert (ns, node) t
 
 
 -- | Merge two tables, resulting in an error when overlapping keys are
 -- found ('Left' will contian those keys).  When no overlapping keys are
 -- found the result will contain the union of both tables in a 'Right'.
-merge :: Table -> Table -> Either [Text] Table
-merge existing new = case intersect (M.keys existing) (M.keys new) of
+merge :: Table -> Table -> Either Text Table
+merge existing new = case M.keys existing `intersect` M.keys new of
                        [] -> Right $ M.union existing new
-                       ds -> Left  $ ds
+                       ds -> Left  $ T.concat [ "Overlapping keys: "
+                                              , T.intercalate ", " ds ]
 
 
 -- | Convenience function to construct a common error message for the 'insert' function.

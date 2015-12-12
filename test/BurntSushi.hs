@@ -59,4 +59,4 @@ tests = return $ testGroup "BurntSushi's test suite"
     assertParseFailure f tomlBS =
       case parseTomlDoc "test" (decodeUtf8 tomlBS) of
         Left _ -> return ()
-        Right _ -> assertFailure $ "Parser accepted invalid TOML file: " ++ f ++ ".toml"
+        Right _ -> assertFailure $ "Parser accepted invalid TOML file: " ++ f
