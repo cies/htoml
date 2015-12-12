@@ -1,6 +1,15 @@
 htoml
 =====
 
+[![Build Status](https://travis-ci.org/cies/htoml.svg?branch=master)](https://travis-ci.org/cies/htoml)
+[![Latest version on Hackage](https://hackage.haskell.org/package/html)](https://img.shields.io/hackage/v/htoml.svg)
+[![Dependencies of latest version on Hackage](https://hackage.haskell.org/package/html)](https://img.shields.io/hackage-deps/v/htoml.svg)
+
+[![htoml on Stackage LTS 2](http://stackage.org/package/htoml/badge/lts-2)](http://stackage.org/lts-2/package/htoml)
+[![htoml on Stackage LTS 3](http://stackage.org/package/htoml/badge/lts-3)](http://stackage.org/lts-3/package/htoml)
+[![htoml on Stackage Nightly](http://stackage.org/package/htoml/badge/nightly)](http://stackage.org/nightly/package/htoml)
+
+
 A [TOML](https://github.com/mojombo/toml) parser library in
 [Haskell](http://haskell-lang.org).
 
@@ -44,7 +53,7 @@ in the root of the repository.
     git clone https://github.com/cies/htoml.git
     cd htoml
     stack init
-    stack ghci
+    stack --install-ghc ghci
 
 We can now start exploring `htoml` from a GHCi REPL.
 
@@ -101,6 +110,15 @@ exist; maybe the `lens` library can give great results in some cases.
 But I have no experience with them.
 
 
+### Compatibility
+
+Currently we are testing against several versions of GHC with
+[Travis CI](https://travis-ci.org/cies/htoml) as defined in the `env` section of our
+[`.travis.yml`](https://github.com/cies/htoml/blob/master/.travis.yml).
+`lts-2` implies GHC 7.8.4, `lts-3` implies GHC 7.10.2, and `nightly` is
+build with a regularly updated version of GHC.
+
+
 ### Version contraints of `htoml`'s dependencies
 
 If you encounter any problems because `htoml`'s dependecies are
@@ -114,17 +132,19 @@ attractive solution to most (dependency) version conflicts.
 
 ### Tests and benchmarks
 
-The test suite is build by default, `cabal configure --disable-tests` disables them.
-The benchmark suite is not run by default, `cabal configure --enable-benchmarks` enables them.
+Tests are build and run with:
 
-With `cabal build` both of these suites are build as executables and
-put somewhere in `dist/`. Passing `--help` to them will reveal their
-options.
+    stack test
 
 [BurntSushi's language agnostic test suite](https://github.com/BurntSushi/toml-test)
 is embedded in the test suite executable.  Using a shell script (that
 lives in `test/BurntSushi`) the latest tests can be fetched from
 its Github repository.
+
+The benchmarks, that use the amazing [`criterion`](http://www.serpentine.com/criterion)
+library, are build and run with:
+
+    stack build :benchmarks
 
 
 ### Contributions
