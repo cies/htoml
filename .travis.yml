@@ -11,6 +11,13 @@ addons:
     packages:
     - libgmp-dev
 
+env:
+- ARGS=""
+- ARGS="--resolver lts-2"
+- ARGS="--resolver lts-3"
+- ARGS="--resolver lts"
+- ARGS="--resolver nightly"
+
 before_install:
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
@@ -21,8 +28,10 @@ before_install:
 # executables, and test suites, and runs the test suites. --no-terminal works
 # around some quirks in Travis's terminal implementation.
 script:
-- ./.travis_long.sh stack --no-terminal --install-ghc init
-- ./.travis_long.sh stack --no-terminal --install-ghc test
+# --force so it overwrites stack.yaml after the first run
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc init --force
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc test
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc test --haddock
 
 # Caching so the next build will be fast.
 cache:
