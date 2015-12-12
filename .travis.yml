@@ -34,11 +34,15 @@ script:
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --modify-stack-yaml
-# run the actual test
+# for debug purpose, know what's going on
+- cat stack.yaml
+# build and run the test
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc test
 # build the docs
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install hscolour
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc haddock --no-haddock-deps
+# build and run the benchmarks
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc build :benchmarks
 
 # Caching so the next build will be fast.
 cache:
