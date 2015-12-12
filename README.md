@@ -23,26 +23,32 @@ The documentation for this package may (or may not) be found on
 
 ### Quick start
 
-Installing `htoml` is easy.
+Installing `htoml` is easy. Either by using
+[Stack](http://haskellstack.org) (recommended):
+
+    stack install htoml
+
+Or using Cabal:
 
     cabal install htoml
 
 In order to make your project depend on it you can add it as a
-dependency in your project's cabal file.
+dependency in your project's `.cabal` file, and since it is not
+yet on [Stackages](https://www.stackage.org/) you will also have
+to add it to your `stack.yaml` file when using Stack.
 
-To quickly show some features of `htoml` we start `GHCi` from the
-root of the repository so it picks up configuration from the
-`.ghci` file that lives there.
+To quickly show some features of `htoml` we use Stack to start a
+GHCi-based REPL. It picks up configuration from the `.ghci` file
+in the root of the repository.
 
     git clone https://github.com/cies/htoml.git
     cd htoml
-    cabal sandbox init  ;# initialize a cabal sandbox
-    cabal install       ;# install the dependencies and build all
-    cabal repl          ;# starts a sandbox-aware GHCi
+    stack init
+    stack ghci
 
-We can immediately start exploring from the `GHCi` prompt.
+We can now start exploring `htoml` from a GHCi REPL.
 
-    > txt <- readFile "benchmarks/example.toml"
+    > txt <- Text.readFile "benchmarks/example.toml"
     > let r = parseTomlDoc "" txt
     > r
     Right (fromList [("database",NTable (fromList [("enabled",NTValue (VBoolean True) [...]
@@ -118,14 +124,14 @@ options.
 [BurntSushi's language agnostic test suite](https://github.com/BurntSushi/toml-test)
 is embedded in the test suite executable.  Using a shell script (that
 lives in `test/BurntSushi`) the latest tests can be fetched from
-BurntSushi's repository.
+its Github repository.
 
 
 ### Contributions
 
 Most welcome! Please raise issues, start discussions, give comments or
 submit pull-requests.
-This is one of the first Haskell libraries I wrote, any feedback is
+This is one of the first Haskell libraries I wrote, feedback is
 much appreciated.
 
 
@@ -149,8 +155,8 @@ much appreciated.
 * Make all tests pass (currently some more obscure corner cases don't pass)
 * Add property tests with QuickCheck (the internet says it's possible for parsers)
 * Extensively test error cases
-* Try using Vector instead of List (measure performance increase with the benchmarks)
-* See how lenses may (or may not) fit into this package
+* Try using `Vector` instead of `List` (measure performance increase with the benchmarks)
+* See how lenses may (or may not) fit into this package, or an additional package
 
 
 ### Acknoledgements
@@ -169,5 +175,5 @@ The TOML examples that are used as part of the benchmarks are copied
 from Tom Preston-Werner's TOML spec which is MIT licensed.
 
 For all other files in this project the copyrights are specified in the
-`htoml.cabal` file, and are distributed under the BSD3 license as found
+`htoml.cabal` file, they are distributed under the BSD3 license as found
 in the `LICENSE` file.

@@ -8,3 +8,5 @@ cabal-dev
 .cabal-sandbox
 cabal.sandbox.config
 .*.sw[po]
+.stack-work
+stack.yaml  # just create your own with `stack init` to best fit your setup
