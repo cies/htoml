@@ -30,8 +30,15 @@ before_install:
 script:
 # --force so it overwrites stack.yaml after the first run
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc init --force
+# automatically add hackage deps to stack.yaml using the `solver` command
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --modify-stack-yaml
+# run the actual test
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc test
-- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc test --haddock
+# build the docs
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install hscolour
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc haddock --no-haddock-deps
 
 # Caching so the next build will be fast.
 cache:
