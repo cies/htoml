@@ -4,13 +4,13 @@ synopsis:                 Parser for TOML files
 description:              TOML is an obvious and minimal format for config files.
                           .
                           This package provides a TOML parser,
-                          build with the Parsec library, and providing a JSON
+                          build with the Parsec library. It exposes a JSON
                           interface using the Aeson library.
 homepage:                 https://github.com/cies/htoml
 bug-reports:              https://github.com/cies/htoml/issues
 license:                  BSD3
 license-file:             LICENSE
-copyright:                (c) 2013-2014 Cies Breijs
+copyright:                (c) 2013-2015 Cies Breijs
 author:                   Cies Breijs
 maintainer:               Cies Breijs <cies % kde ! nl>
 category:                 Data, Text, Parser, Configuration, JSON, Language
