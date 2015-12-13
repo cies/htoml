@@ -8,9 +8,9 @@ module Text.Toml.Parser
   ) where
 
 import           Control.Applicative hiding (many, optional, (<|>))
+import           Control.Monad       (when)
 import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
-import qualified Data.Set            as S
 import           Data.Text           (Text, pack, unpack)
 
 #if MIN_VERSION_time(1,5,0)
@@ -42,6 +42,13 @@ tomlDoc = do
     skipBlanks
     topTable <- table
     namedSections <- many namedSection
+
+    let tables = let f (_, (NTable _)) = True
+                     f _               = False
+                 in filter f namedSections
+
+    failOnDuplicates (L.intercalate "." . map unpack) tables
+
     eof  -- ensures input is completely consumed
     case join topTable (reverse namedSections) of
       Left msg -> fail (unpack msg)  -- TODO: allow Text in Parse Errors
@@ -52,18 +59,26 @@ tomlDoc = do
                                           Right r  -> insert x r
 
 
+failOnDuplicates :: Ord a => (a -> String) -> [(a, b)] -> Parser ()
+failOnDuplicates show' ks = do
+  let duplicates = dupes $ map fst ks
+  when (not $ null duplicates) $ fail $ L.concat [ "Overlapping keys: "
+                                                 , L.intercalate ", "
+                                                   $ map show'
+                                                   $ duplicates ]
+  where
+    dupes :: Ord a => [a] -> [a]
+    dupes xs = let xs' = L.sort xs
+               in L.concat
+                  $ zipWith (\x y -> if x == y then [x] else []) xs' (tail xs')
+
+
 -- | Parses a table of key-value pairs.
 table :: Parser Table
 table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
-    case hasDup (map fst pairs) of
-      Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
-      Nothing -> return $ M.fromList (map (\(k, v) -> (k, NTValue v)) pairs)
-  where
-    hasDup        :: Ord a => [a] -> Maybe a
-    hasDup xs     = dup' xs S.empty
-    dup' []     _ = Nothing
-    dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
+    failOnDuplicates (\x -> "\"" ++ unpack x ++ "\"") pairs
+    return $ M.fromList (map (\(k, v) -> (k, NTValue v)) pairs)
 
 
 -- | Parses a 'Table' or 'TableArray' with its header.
@@ -77,6 +92,13 @@ namedSection = do
     skipBlanks
     return $ case eitherHdr of Left  ns -> (ns, NTable   tbl )
                                Right ns -> (ns, NTArray [tbl])
+
+-- | Parses a table key/name
+tableKey :: Parser Text
+tableKey = bareKey <|> rawQuotedStr
+  where
+    bareKey = pack <$> (many1 $ satisfy $ \ch -> ch `elem` keyChars)
+    keyChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "_-"
 
 
 -- | Parses a table header.
@@ -93,23 +115,16 @@ tableArrayHeader = between (twoChar '[') (twoChar ']') headerValue
 
 -- | Parses the value of any header (names separated by dots), into a list of 'Text'.
 headerValue :: Parser [Text]
-headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
-  where
-    headerNameChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                                    c /= '[' && c /= ']'  && c /= '.'  && c /= '#')
+headerValue = (skipSpaces *> tableKey <* skipSpaces) `sepBy1` (char '.')
 
 
 -- | Parses a key-value assignment.
 assignment :: Parser (Text, TValue)
 assignment = do
-    k <- pack <$> many1 keyChar
-    skipBlanks >> char '=' >> skipBlanks
+    k <- skipBlanks *> tableKey
+    skipSpaces >> char '=' >> skipSpaces
     v <- value
     return (k, v)
-  where
-    -- TODO: Follow the spec, e.g.: only first char cannot be '['.
-    keyChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                             c /= '=' && c /= '#'  && c /= '[')
 
 
 -- | Parses a value.
@@ -144,24 +159,28 @@ anyStr :: Parser TValue
 anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
 
 
-basicStr :: Parser TValue
-basicStr = VString <$> between dQuote dQuote (fmap pack $ many strChar)
+rawQuotedStr :: Parser Text
+rawQuotedStr = between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
 
 
+basicStr :: Parser TValue
+basicStr = VString <$> rawQuotedStr
+
+
 multiBasicStr :: Parser TValue
-multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
+multiBasicStr = VString <$> (openDQuote3 *> (fmap (pack . L.concat) $ manyTill strChar dQuote3))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
     -- | Parse tripple-double quotes
     dQuote3     = count 3 $ char '"'
-    -- | Parse a string char, accepting escaped codes, ignoring escaped white space
-    strChar     = escWhiteSpc *> (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
-    -- | Parse escaped white space, if any
-    escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
+    -- | Parse a string char, accepting escaped codes, ignoring escaped white spaces
+    strChar     = (escWhiteSpc *> return "") <|> fmap (:[]) (escSeq <|> (satisfy (/= '\\')))
+    -- | Parse escaped white space
+    escWhiteSpc = many1 $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
 
 literalStr :: Parser TValue
@@ -181,7 +200,7 @@ multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuo
 
 datetime :: Parser TValue
 datetime = do
-    d <- manyTill anyChar (try $ char 'Z')
+    d <- try $ manyTill anyChar (char 'Z')
 #if MIN_VERSION_time(1,5,0)
     let  mt = parseTimeM True defaultTimeLocale (iso8601DateFormat $ Just "%X") d
 #else
@@ -264,6 +283,10 @@ skipBlanks = skipMany blank
   where
     blank   = try ((many1 $ satisfy isSpc) >> return ()) <|> try comment <|> try eol
     comment = char '#' >> (many $ satisfy (/= '\n')) >> return ()
+
+-- | Parses the string that containing whitespaces (but not newline or EOF)
+skipSpaces :: Parser ()
+skipSpaces = try (many $ satisfy isSpc) *> return ()
 
 
 -- | Results in 'True' for whitespace chars, tab or space, according to spec.
