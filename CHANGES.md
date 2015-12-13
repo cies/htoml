@@ -4,6 +4,11 @@ Change log
 #### dev
 * ...
 
+#### 0.2.0.0
+* Now compatible with TOML 0.4.0
+* Improved test suite (all test now pass)
+* Slight API breakage (therefore major version bump)
+
 #### 0.1.0.3
 * GHC 7.10 compatibility fix (thanks @erebe)
 * Allow time >= 1.5.0, by using some CPP trickery
