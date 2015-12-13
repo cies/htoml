@@ -1,7 +1,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Toml.Types where
+module Text.Toml.Types (
+    Table
+  , Node (VTable,VTArray,VString,VInteger,VFloat,VBoolean,VDatetime,VArray)
+  , ToBsJSON (..)
+  , foldTable
+  , emptyTable
+  , insert
+  ) where
 
 import           Data.Aeson.Types
 import qualified Data.HashMap.Strict as M
@@ -17,81 +24,96 @@ import qualified Data.Vector         as V
 -- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
 type Table = M.HashMap Text Node
 
-
--- | A 'Node' may contain a 'TValue', a 'Table' or a table array '[Table]'.
-data Node = NTValue TValue
-          | NTable  Table
-          | NTArray [Table]
+-- | A 'Node' may contain any type of value that can put in a 'VArray'.
+data Node = VTable    Table
+          | VITable   Table
+          | VTArray   [Table]
+          | VString   Text
+          | VInteger  Int64
+          | VFloat    Double
+          | VBoolean  Bool
+          | VDatetime UTCTime
+          | VArray    [Node]
   deriving (Eq, Show)
 
-
--- | A 'TValue' may contain any type of value that can put in a 'VArray'.
-data TValue = VString   Text
-            | VInteger  Int64
-            | VFloat    Double
-            | VBoolean  Bool
-            | VDatetime UTCTime
-            | VArray    [TValue]
-  deriving (Eq, Show)
-
+-- Turn VITables in VTables
+foldTable :: Table -> Table
+foldTable = M.map go
+  where
+    go (VTable t) =  VTable $ foldTable t
+    go (VITable t) = VTable $ foldTable t
+    go (VTArray t) = VTArray $ fmap foldTable t
+    go other = other
 
 -- | Contruct an empty 'Table'.
 emptyTable :: Table
 emptyTable = M.empty
-
-
--- | Contruct an empty 'NTable'.
-emptyNTable :: Node
-emptyNTable = NTable M.empty
-
 
 -- | Inserts a table ('Table') with name ('[Text]') which may be part of
 -- a table array (when 'Bool' is 'True') into a 'Table'.
 -- It may result in an error ('Text') on the 'Left' or a modified table
 -- on the 'Right'.
 insert :: ([Text], Node) -> Table -> Either Text Table
-insert ([], _)         _ = error "FATAL: Cannot call 'insert' without a name."
-insert (_ , NTValue _) _ = error "FATAL: Cannot call 'insert' with a TValue."
+insert ([], _)         _ = Left "FATAL: Cannot call 'insert' without a name."
 insert ([name], node) ttbl =
     -- In case 'name' is final
-  (\x -> M.insert name x ttbl) <$>
-    case (M.lookup name ttbl, node) of
-      (Nothing,          _)          -> Right node
-      (Just (NTArray a), NTArray na) -> Right $ NTArray $ a ++ na
-      (Just (NTable t),  NTable  tt) -> NTable <$> merge t tt
-      _                              -> NTable <$> commonInsertError node [name]
+    case M.lookup name ttbl of
+      Nothing           -> Right $ M.insert name node ttbl
+      Just (VITable t)  -> case node of
+        (VITable nt) -> case merge t nt of
+          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
+                                     , "), from table named '", name, "'." ]
+          Right r -> Right $ M.insert name (VITable r) ttbl
+        (VTable nt) -> case merge t nt of
+          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
+                                     , "), from table named '", name, "'." ]
+          Right r -> Right $ M.insert name (VTable r) ttbl
+        _         -> commonInsertError node [name]
+      Just (VTable t)   -> case node of
+        (VITable nt) -> case merge t nt of
+          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
+                                     , "), from table named '", name, "'." ]
+          Right r -> Right $ M.insert name (VTable r) ttbl
+        _         -> commonInsertError node [name]
+      Just (VTArray a)  -> case node of
+        (VTArray na) -> Right $ M.insert name (VTArray $ a ++ na) ttbl
+        _            -> commonInsertError node [name]
+      Just _            -> commonInsertError node [name]
 insert (fullName@(name:ns), node) ttbl =
     -- In case 'name' is not final, but a sub-name
     case M.lookup name ttbl of
-      Nothing           -> insert' NTable emptyTable
-      Just (NTable t)   -> insert' NTable t
-      Just (NTArray []) -> error "FATAL: Call to 'insert' found impossibly empty NTArray."
-      Just (NTArray a)  -> insert' (\t -> NTArray $ init a ++ [t]) (last a)
+      Nothing           -> case insert (ns, node) emptyTable of
+                             Left msg -> Left msg
+                             Right r  -> Right $ M.insert name (VITable r) ttbl
+      Just (VTable t)   -> case insert (ns, node) t of
+                             Left msg -> Left msg
+                             Right tt -> Right $ M.insert name (VTable tt) ttbl
+      Just (VITable t)  -> case insert (ns, node) t of
+                             Left msg -> Left msg
+                             Right tt -> Right $ M.insert name (VITable tt) ttbl
+      Just (VTArray []) -> Left "FATAL: Call to 'insert' found impossibly empty VArray."
+      Just (VTArray a)  -> case insert (ns, node) (last a) of
+                             Left msg -> Left msg
+                             Right t  -> Right $ M.insert name (VTArray $ (init a) ++ [t]) ttbl
       Just _            -> commonInsertError node fullName
-  where
-    insert' f t = (\x -> M.insert name (f x) ttbl) <$> insert (ns, node) t
 
 
 -- | Merge two tables, resulting in an error when overlapping keys are
 -- found ('Left' will contian those keys).  When no overlapping keys are
 -- found the result will contain the union of both tables in a 'Right'.
-merge :: Table -> Table -> Either Text Table
+merge :: Table -> Table -> Either [Text] Table
 merge existing new = case M.keys existing `intersect` M.keys new of
                        [] -> Right $ M.union existing new
-                       ds -> Left  $ T.concat [ "Overlapping keys: "
-                                              , T.intercalate ", " ds ]
+                       ds -> Left  $ ds
 
-
--- | Convenience function to construct a common error message for the 'insert' function.
 commonInsertError :: Node -> [Text] -> Either Text Table
 commonInsertError what name = Left . T.concat $ case what of
-    NTValue _ -> ["Cannot insert a value '", n, "'."]
     _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
   where
     n = T.intercalate "." name
-    w = case what of (NTable _) -> "tables"
-                     _          -> "array of tables"
-
+    w = case what of (VTable _)  -> "tables"
+                     (VITable _) -> "tables"
+                     _           -> "array of tables"
 
 
 -- * Regular ToJSON instances
@@ -99,14 +121,9 @@ commonInsertError what name = Left . T.concat $ case what of
 -- | 'ToJSON' instances for the 'Node' type that produce Aeson (JSON)
 -- in line with the TOML specification.
 instance ToJSON Node where
-  toJSON (NTValue v) = toJSON v
-  toJSON (NTable v)  = toJSON v
-  toJSON (NTArray v) = toJSON v
-
-
--- | 'ToJSON' instances for the 'TValue' type that produce Aeson (JSON)
--- in line with the TOML specification.
-instance ToJSON TValue where
+  toJSON (VTable v)    = toJSON v
+  toJSON (VITable v)   = toJSON v
+  toJSON (VTArray v)   = toJSON v
   toJSON (VString v)   = toJSON v
   toJSON (VInteger v)  = toJSON v
   toJSON (VFloat v)    = toJSON v
@@ -138,21 +155,15 @@ instance (ToBsJSON v) => ToBsJSON (M.HashMap Text v) where
   toBsJSON = Object . M.map toBsJSON
   {-# INLINE toBsJSON #-}
 
-
--- | 'ToBsJSON' instances for the 'Node' type that produce Aeson (JSON)
--- in line with BurntSushi's language agnostic TOML test suite.
-instance ToBsJSON Node where
-  toBsJSON (NTValue v) = toBsJSON v
-  toBsJSON (NTable v)  = toBsJSON v
-  toBsJSON (NTArray v) = toBsJSON v
-
-
 -- | 'ToBsJSON' instances for the 'TValue' type that produce Aeson (JSON)
 -- in line with BurntSushi's language agnostic TOML test suite.
 --
 -- As seen in this function, BurntSushi's JSON encoding explicitly
 -- specifies the types of the values.
-instance ToBsJSON TValue where
+instance ToBsJSON Node where
+  toBsJSON (VTable v)    = toBsJSON v
+  toBsJSON (VITable v)   = toBsJSON v
+  toBsJSON (VTArray v)   = toBsJSON v
   toBsJSON (VString v)   = object [ "type"  .= toJSON ("string" :: String)
                                   , "value" .= toJSON v ]
   toBsJSON (VInteger v)  = object [ "type"  .= toJSON ("integer" :: String)

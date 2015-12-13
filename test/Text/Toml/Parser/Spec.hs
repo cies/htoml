@@ -22,11 +22,11 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
     it "should parse non-empty tomlDocs that do not end with a newline" $
       testParser tomlDoc "number = 123" $
-        fromList [("number", NTValue $ VInteger 123)]
+        fromList [("number", VInteger 123)]
 
     it "should parse when tomlDoc ends in a comment" $
       testParser tomlDoc "q = 42  # understood?" $
-        fromList [("q", NTValue $ VInteger 42)]
+        fromList [("q", VInteger 42)]
 
     it "should not parse re-assignment of key" $
       testParserFails tomlDoc "q=42\nq=42"
@@ -39,23 +39,27 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
     it "should parse simple named table" $
       testParser tomlDoc "[a]\naa = 108" $
-        fromList [("a", NTable (fromList [("aa", NTValue $ VInteger 108)] ))]
+        fromList [("a", VTable (fromList [("aa", VInteger 108)] ))]
 
     it "should not parse redefined table header (key already exists at scope)" $
-      testParserFails tomlDoc "[a]\n[b]\n[a]"
+      testParserFails tomlDoc "[a]\n[a]"
 
     it "should parse redefinition of implicit key" $
       testParser tomlDoc "[a.b]\n[a]" $
-        fromList [("a", NTable (fromList [("b", emptyNTable)] ))]
+        fromList [("a", VTable (fromList [("b", VTable emptyTable)] ))]
 
     it "should parse redefinition of implicit key, with table contents" $
       testParser tomlDoc "[a.b]\nb=3\n[a]\na=4" $
-        fromList [("a", NTable (fromList [("b", NTable (fromList [("b", NTValue $ VInteger 3)])),
-                                          ("a", NTValue $ VInteger 4)]))]
+        fromList [("a", VTable (fromList [("b", VTable (fromList [("b", VInteger 3)])),
+                                          ("a", VInteger 4)]))]
 
     it "should parse redefinition by implicit table header" $
       testParser tomlDoc "[a]\n[a.b]" $
-        fromList [("a", NTable (fromList [("b", emptyNTable)] ))]
+        fromList [("a", VTable (fromList [("b", VTable emptyTable)] ))]
+
+    it "should parse inline tables the same as normal tables" $
+      testParser tomlDoc "[a]\nb={}" $
+        fromList [("a", VTable (fromList [("b", VTable emptyTable)] ))]
 
     it "should not parse redefinition key" $
       testParserFails tomlDoc "[a]\nb=1\n[a.b]"
@@ -65,26 +69,26 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
     it "should parse a simple empty table array" $
       testParser tomlDoc "[[a]]\n[[a]]" $
-        fromList [("a", NTArray [ fromList []
+        fromList [("a", VTArray [ fromList []
                                 , fromList [] ] )]
 
     it "should parse a simple table array with content" $
       testParser tomlDoc "[[a]]\na1=1\n[[a]]\na2=2" $
-        fromList [("a", NTArray [ fromList [("a1", NTValue $ VInteger 1)]
-                                , fromList [("a2", NTValue $ VInteger 2)] ] )]
+        fromList [("a", VTArray [ fromList [("a1", VInteger 1)]
+                                , fromList [("a2", VInteger 2)] ] )]
 
     it "should not allow a simple table array to be inserted into a non table array" $
       testParserFails tomlDoc "a = [1,2,3]\n[[a]]"
 
     it "should parse a simple empty nested table array" $
       testParser tomlDoc "[[a.b]]\n[[a.b]]" $
-        fromList [("a", NTable (fromList [("b", NTArray [ emptyTable
+        fromList [("a", VTable (fromList [("b", VTArray [ emptyTable
                                                         , emptyTable ] )] ) )]
 
     it "should parse a simple non empty table array" $
       testParser tomlDoc "[[a.b]]\na1=1\n[[a.b]]\na2=2" $
-        fromList [("a", NTable (fromList [("b", NTArray [ fromList [("a1", NTValue $ VInteger 1)]
-                                                        , fromList [("a2", NTValue $ VInteger 2)]
+        fromList [("a", VTable (fromList [("b", VTArray [ fromList [("a1", VInteger 1)]
+                                                        , fromList [("a2", VInteger 2)]
                                                         ] )] ) )]
 
     it "should parse redefined implicit table header" $
@@ -92,7 +96,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
     it "should parse redefinition by implicit table header" $
       testParser tomlDoc "[[a]]\n[[a.b]]" $
-        fromList [("a", NTArray [ fromList [("b", NTArray [ fromList [] ])] ] )]
+        fromList [("a", VTArray [ fromList [("b", VTArray [ fromList [] ])] ] )]
 
 
   describe "Parser.tomlDoc (mixed named tables and tables arrays)" $ do
@@ -108,27 +112,27 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
     it "should parse redefined implicit table header (array by table)" $
       testParser tomlDoc "[[a.b]]\n[a]" $
-        fromList [("a", NTable (fromList [("b", NTArray [ fromList [] ])] ) )]
+        fromList [("a", VTable (fromList [("b", VTArray [ fromList [] ])] ) )]
 
     it "should not parse redefined implicit table header (array by table), when keys collide" $
       testParserFails tomlDoc "[[a.b]]\n[a]\nb=1"
 
     it "should insert sub-key of regular table in most recently defined table array" $
       testParser tomlDoc "[[a]]\ni=0\n[[a]]\ni=1\n[a.b]" $
-        fromList [("a", NTArray [ fromList [ ("i", NTValue $ VInteger 0) ]
-                                , fromList [ ("b", NTable  $ fromList [] )
-                                           , ("i", NTValue $ VInteger 1) ]
+        fromList [("a", VTArray [ fromList [ ("i", VInteger 0) ]
+                                , fromList [ ("b", VTable  $ fromList [] )
+                                           , ("i", VInteger 1) ]
                                 ] )]
 
     it "should insert sub-key of table array" $
       testParser tomlDoc "[a]\n[[a.b]]" $
-        fromList [("a", NTable (fromList [("b", NTArray [fromList []])] ) )]
+        fromList [("a", VTable (fromList [("b", VTArray [fromList []])] ) )]
 
     it "should insert sub-key (with content) of table array" $
       testParser tomlDoc "[a]\nq=42\n[[a.b]]\ni=0" $
-        fromList [("a", NTable (fromList [ ("q", NTValue $ VInteger 42),
-                                           ("b", NTArray [
-                                                   fromList [("i", NTValue $ VInteger 0)]
+        fromList [("a", VTable (fromList [ ("q", VInteger 42),
+                                           ("b", VTArray [
+                                                   fromList [("i", VInteger 0)]
                                                    ]) ]) )]
 
   describe "Parser.headerValue" $ do
@@ -185,13 +189,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
       testParser assignment "a=108" ("a", VInteger 108)
 
     it "should parse when value on next line" $
-      testParserFails assignment "a =\n108"
-
-    it "should parse when assignment operator and value are on the next line" $
-      testParserFails assignment "a\n= 108"
-
-    it "should parse when key, value and assignment operator are on separate lines" $
-      testParserFails assignment "a\n=\n108"
+      testParser assignment "a =\n108" ("a", VInteger 108)
 
 
   describe "Parser.boolean" $ do
@@ -209,10 +207,10 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
   describe "Parser.basicStr" $ do
 
     it "should parse the common escape sequences in basic strings" $
-      testParser basicStr "\"123\\b\\t\\n\\f\\r\\\"\\/\\\\\"" $ VString "123\b\t\n\f\r\"/\\"
+      testParser basicStr "\"123\\b\\t\\n\\f\\r\\\"\\/\\\\\"" $ "123\b\t\n\f\r\"/\\"
 
     it "should parse the simple unicode value from the example" $
-      testParser basicStr "\"中国\"" $ VString "中国"
+      testParser basicStr "\"中国\"" $ "中国"
 
     it "should parse escaped 4 digit unicode values" $
       testParser assignment "special_k = \"\\u0416\"" ("special_k", VString "Ж")
@@ -227,16 +225,19 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
   describe "Parser.multiBasicStr" $ do
 
     it "should parse simple example" $
-      testParser multiBasicStr "\"\"\"thorrough\"\"\"" $ VString "thorrough"
+      testParser multiBasicStr "\"\"\"thorrough\"\"\"" $  "thorrough"
+
+    it "should parse text containing a quote" $
+      testParser multiBasicStr "\"\"\"is \"it\" complete\"\"\"" $ "is \"it\" complete"
 
     it "should parse with newlines" $
-      testParser multiBasicStr "\"\"\"One\nTwo\"\"\"" $ VString "One\nTwo"
+      testParser multiBasicStr "\"\"\"One\nTwo\"\"\"" $  "One\nTwo"
 
     it "should parse with escaped newlines" $
-      testParser multiBasicStr "\"\"\"One\\\nTwo\"\"\"" $ VString "OneTwo"
+      testParser multiBasicStr "\"\"\"One\\\nTwo\"\"\"" $  "OneTwo"
 
     it "should parse newlines, ignoring 1 leading newline" $
-      testParser multiBasicStr "\"\"\"\nOne\\\nTwo\"\"\"" $ VString "OneTwo"
+      testParser multiBasicStr "\"\"\"\nOne\\\nTwo\"\"\"" $  "OneTwo"
 
     it "should parse with espaced whitespace" $
       testParser multiBasicStr "\"\"\"\\\n\
@@ -244,14 +245,17 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
                                \\\\n\
                                \Jumped \\\n\
                                \Lazy\\\n\
-                               \ \"\"\"" $ VString "Quick Jumped Lazy"
+                               \ \"\"\"" $  "Quick Jumped Lazy"
+
+    it "should parse espaced on first" $
+      testParser multiBasicStr "\"\"\"\\\nQuick \\\n\\\nJumped \\\nLazy\\\n\"\"\"" $  "Quick Jumped Lazy"
 
 
   describe "Parser.literalStr" $ do
 
     it "should parse literally" $
       testParser literalStr "'\"Your\" folder: \\\\User\\new\\tmp\\'" $
-                            VString "\"Your\" folder: \\\\User\\new\\tmp\\"
+                             "\"Your\" folder: \\\\User\\new\\tmp\\"
 
     it "has no notion of 'escaped single quotes'" $
       testParserFails tomlDoc "q = 'I don\\'t know.'"  -- string terminates before the "t"
@@ -262,7 +266,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse literally" $
       testParser multiLiteralStr
         "'''\nFirst newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?'''"
-        $ VString "First newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?"
+        $  "First newline is dropped.\n   Other whitespace,\n  is preserved -- isn't it?"
 
 
   describe "Parser.datetime" $ do
@@ -304,6 +308,17 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should not accept floats without any decimals" $
       testParserFails float "5."
 
+    it "should accept floats which contain underscores" $
+      testParser float "5_3.4_5" $ VFloat 53.45
+
+    it "should not accept floats which end with underscores" $
+      testParserFails float "5_3.4_5_"
+
+    it "should not accept floats which start with underscores" $
+      testParserFails float "_5_3.4_5"
+
+    it "should not accept floats which have two consecutive underscores" $
+      testParserFails float "5__3.4__5"
 
   describe "Parser.integer" $ do
 
@@ -319,6 +334,17 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse integers prefixed with a plus" $
       testParser integer "+42" $ VInteger 42
 
+    it "should accept integers which contain underscores" $
+      testParser integer "4_2" $ VInteger 42
+
+    it "should not accept integers which end with underscores" $
+      testParserFails integer "4_2_"
+
+    it "should not accept integers which start with underscores" $
+      testParserFails integer "_4_2"
+
+    it "should not accept integers which have two consecutive underscores" $
+      testParserFails integer "4__2"
 
   describe "Parser.tomlDoc arrays" $ do
 
@@ -384,6 +410,16 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
     it "should parse terminating commas in arrays(2)" $
       testParser array "[1,2,]" $ VArray [ VInteger 1, VInteger 2 ]
 
+  describe "Parser.tomlDoc inline tables" $ do
+
+    it "should parse an empty inline table" $
+      testParser inlineTable "{}" $ VTable (fromList [])
+
+    it "should parse simple inline tables" $
+      testParser inlineTable "{ a = 8 , b = \"things\" }" $ VTable (fromList [ ("a" , VInteger 8) , ("b", VString "things") ])
+
+    it "should not parse simple inline tables with newline " $
+      testParserFails inlineTable "{ a = 8 , \n b = \"things\" }"
 
   where
     testParser p str success = case parseOnly p str of Left  _ -> False

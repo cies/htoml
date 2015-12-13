@@ -24,7 +24,7 @@ Toml is to configuration files, like what Markdown is for rich-text.
 
 This library aims to be compatible with the latest version of the
 [TOML spec](https://github.com/mojombo/toml), currently that is
-[v0.3.1](https://github.com/toml-lang/toml/releases/tag/v0.3.1).
+[v0.4.0](https://github.com/toml-lang/toml/releases/tag/v0.4.0).
 
 The documentation for this package may (or may not) be found on
 [Hackage](https://hackage.haskell.org/package/htoml).
