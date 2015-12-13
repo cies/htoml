@@ -1,6 +1,6 @@
 module Main where
 
-
+import           Prelude               hiding (readFile)  -- needed for GHCi, see `.ghci`
 import           Test.Tasty            (defaultMain, testGroup)
 
 import qualified BurntSushi

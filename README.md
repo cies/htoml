@@ -57,7 +57,7 @@ in the root of the repository.
 
 We can now start exploring `htoml` from a GHCi REPL.
 
-    > txt <- Text.readFile "benchmarks/example.toml"
+    > txt <- readFile "benchmarks/example.toml"
     > let r = parseTomlDoc "" txt
     > r
     Right (fromList [("database",NTable (fromList [("enabled",NTValue (VBoolean True) [...]

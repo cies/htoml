@@ -1,16 +1,12 @@
--- There seems to be a problem with hiding from Prelude when using `stack repl`.
--- For now commented it out and explicitly naming `Data.Text.IO.readFile`.
--- import Prelude hiding (readFile)
-
+import Prelude hiding (readFile)
 import Control.Applicative hiding (many, (<|>))
 import Text.Parsec
 import Text.Parsec.Text
 import Data.HashMap.Strict
 import Data.Text
-import Data.Text.IO as Text (readFile)
+import Data.Text.IO (readFile)
 import Data.Aeson.Types
 import Data.Aeson.Encode
 
 :seti -XOverloadedStrings
 :set prompt "> "
-
