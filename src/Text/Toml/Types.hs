@@ -3,7 +3,7 @@
 
 module Text.Toml.Types (
     Table
-  , Node (VTable,VTArray,VString,VInteger,VFloat,VBoolean,VDatetime,VArray)
+  , Node (VTable, VTArray, VString, VInteger, VFloat, VBoolean, VDatetime, VArray)
   , ToBsJSON (..)
   , foldTable
   , emptyTable
@@ -36,51 +36,49 @@ data Node = VTable    Table
           | VArray    [Node]
   deriving (Eq, Show)
 
--- Turn VITables in VTables
+
+-- | Turn VITables in VTables.
 foldTable :: Table -> Table
 foldTable = M.map go
   where
-    go (VTable t) =  VTable $ foldTable t
+    go (VTable  t) = VTable $ foldTable t
     go (VITable t) = VTable $ foldTable t
     go (VTArray t) = VTArray $ fmap foldTable t
-    go other = other
+    go other       = other
 
 -- | Contruct an empty 'Table'.
 emptyTable :: Table
 emptyTable = M.empty
 
--- | Inserts a table ('Table') with name ('[Text]') which may be part of
--- a table array (when 'Bool' is 'True') into a 'Table'.
+-- | Inserts one-or-more nodes ('Node') with the namespaced name ('[Text]')
+-- into a 'Table'.
 -- It may result in an error ('Text') on the 'Left' or a modified table
 -- on the 'Right'.
 insert :: ([Text], Node) -> Table -> Either Text Table
-insert ([], _)         _ = Left "FATAL: Cannot call 'insert' without a name."
+insert ([], _) _ = Left "FATAL: Cannot call 'insert' without a name."
 insert ([name], node) ttbl =
-    -- In case 'name' is final
+    -- In case 'name' is not prefixed by a sub-name
     case M.lookup name ttbl of
       Nothing           -> Right $ M.insert name node ttbl
       Just (VITable t)  -> case node of
         (VITable nt) -> case merge t nt of
-          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
-                                     , "), from table named '", name, "'." ]
-          Right r -> Right $ M.insert name (VITable r) ttbl
-        (VTable nt) -> case merge t nt of
-          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
-                                     , "), from table named '", name, "'." ]
-          Right r -> Right $ M.insert name (VTable r) ttbl
-        _         -> commonInsertError node [name]
+                          Left ds -> Left $ commonNameInsertError ds [name]
+                          Right r -> Right $ M.insert name (VITable r) ttbl
+        (VTable nt)  -> case merge t nt of
+                          Left ds -> Left $ commonNameInsertError ds [name]
+                          Right r -> Right $ M.insert name (VTable r) ttbl
+        _            -> Left $ commonNodeInsertError node [name]
       Just (VTable t)   -> case node of
         (VITable nt) -> case merge t nt of
-          Left ds -> Left $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
-                                     , "), from table named '", name, "'." ]
-          Right r -> Right $ M.insert name (VTable r) ttbl
-        _         -> commonInsertError node [name]
+                          Left ds -> Left $ commonNameInsertError ds [name]
+                          Right r -> Right $ M.insert name (VTable r) ttbl
+        _            -> Left $ commonNodeInsertError node [name]
       Just (VTArray a)  -> case node of
-        (VTArray na) -> Right $ M.insert name (VTArray $ a ++ na) ttbl
-        _            -> commonInsertError node [name]
-      Just _            -> commonInsertError node [name]
+                          (VTArray na) -> Right $ M.insert name (VTArray $ a ++ na) ttbl
+                          _            -> Left $ commonNodeInsertError node [name]
+      Just _            -> Left $ commonNodeInsertError node [name]
 insert (fullName@(name:ns), node) ttbl =
-    -- In case 'name' is not final, but a sub-name
+    -- In case 'name' is the merely a part of the full name
     case M.lookup name ttbl of
       Nothing           -> case insert (ns, node) emptyTable of
                              Left msg -> Left msg
@@ -95,7 +93,7 @@ insert (fullName@(name:ns), node) ttbl =
       Just (VTArray a)  -> case insert (ns, node) (last a) of
                              Left msg -> Left msg
                              Right t  -> Right $ M.insert name (VTArray $ (init a) ++ [t]) ttbl
-      Just _            -> commonInsertError node fullName
+      Just _            -> Left $ commonNodeInsertError node fullName
 
 
 -- | Merge two tables, resulting in an error when overlapping keys are
@@ -106,14 +104,17 @@ merge existing new = case M.keys existing `intersect` M.keys new of
                        [] -> Right $ M.union existing new
                        ds -> Left  $ ds
 
-commonInsertError :: Node -> [Text] -> Either Text Table
-commonInsertError what name = Left . T.concat $ case what of
-    _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
-  where
-    n = T.intercalate "." name
-    w = case what of (VTable _)  -> "tables"
-                     (VITable _) -> "tables"
-                     _           -> "array of tables"
+commonNodeInsertError :: Node -> [Text] -> Text
+commonNodeInsertError node name = T.concat $
+    let w = case node of (VTable _)  -> "tables"
+                         (VITable _) -> "tables"
+                         _           -> "array of tables"
+    in ["Cannot insert ", w, " '", T.intercalate "." name, "' as key already exists."]
+
+commonNameInsertError :: [Text] -> [Text] -> Text
+commonNameInsertError ns name = T.concat
+    [ "Cannot redefine key(s) (", T.intercalate ", " ns
+    , "), from table named '", T.intercalate "." name, "'." ]
 
 
 -- * Regular ToJSON instances
@@ -174,9 +175,9 @@ instance ToBsJSON Node where
                                   , "value" .= toJSON (if v then "true" else "false" :: String) ]
   toBsJSON (VDatetime v) = object [ "type"  .= toJSON ("datetime" :: String)
                                   , "value" .= toJSON (let s = show v
-                                                           z = take (length s - 4) s  ++ "Z"
+                                                           z = take (length s - 4)  s ++ "Z"
                                                            d = take (length z - 10) z
-                                                           t = drop (length z - 9) z
+                                                           t = drop (length z - 9)  z
                                                        in  d ++ "T" ++ t) ]
   toBsJSON (VArray v)    = object [ "type"  .= toJSON ("array" :: String)
                                   , "value" .= toBsJSON v ]
