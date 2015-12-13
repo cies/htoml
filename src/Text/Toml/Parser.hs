@@ -7,9 +7,6 @@ module Text.Toml.Parser
   , module Text.Toml.Types
   ) where
 
-
-import           Prelude             hiding (concat, takeWhile)
-
 import           Control.Applicative hiding (many, optional, (<|>))
 import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
@@ -27,6 +24,8 @@ import           System.Locale       (defaultTimeLocale, iso8601DateFormat)
 import           Numeric             (readHex)
 import           Text.Parsec
 import           Text.Parsec.Text
+
+import           Prelude             hiding (concat, takeWhile)  -- at end to fix redundant warning
 
 import           Text.Toml.Types
 
