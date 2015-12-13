@@ -38,7 +38,7 @@ parseOnly p str = parse (p <* eof) "test" str
 
 -- | Parses a complete document formatted according to the TOML spec.
 tomlDoc :: Parser Table
-tomlDoc = do
+tomlDoc = fmap foldTable $ do
     skipBlanks
     topTable <- table
     namedSections <- many namedSection
@@ -56,12 +56,24 @@ tomlDoc = do
 table :: Parser Table
 table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
-    case hasDup (map fst pairs) of
+    case hasDup' (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
-      Nothing -> return $ M.fromList (map (\(k, v) -> (k, NTValue v)) pairs)
+      Nothing -> return $ M.fromList pairs
+
+inlineTable :: Parser Node
+inlineTable = do
+    pairs <- between (char '{') (char '}') (skipSpaces *> separatedValues <* skipSpaces)
+    case hasDup' (map fst pairs) of
+      Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
+      Nothing -> return $ VTable $ M.fromList pairs
   where
-    hasDup        :: Ord a => [a] -> Maybe a
-    hasDup xs     = dup' xs S.empty
+    skipSpaces      = many (satisfy isSpc)
+    separatedValues = sepBy (skipSpaces *> assignment <* skipSpaces) comma
+    comma           = skipSpaces >> char ',' >> skipSpaces
+
+hasDup'        :: Ord a => [a] -> Maybe a
+hasDup' xx     = dup' xx S.empty
+  where
     dup' []     _ = Nothing
     dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
 
@@ -75,8 +87,8 @@ namedSection = do
     skipBlanks
     tbl <- table
     skipBlanks
-    return $ case eitherHdr of Left  ns -> (ns, NTable   tbl )
-                               Right ns -> (ns, NTArray [tbl])
+    return $ case eitherHdr of Left  ns -> (ns, VTable   tbl )
+                               Right ns -> (ns, VTArray [tbl])
 
 
 -- | Parses a table header.
@@ -93,40 +105,38 @@ tableArrayHeader = between (twoChar '[') (twoChar ']') headerValue
 
 -- | Parses the value of any header (names separated by dots), into a list of 'Text'.
 headerValue :: Parser [Text]
-headerValue = (pack <$> many1 headerNameChar) `sepBy1` (char '.')
+headerValue = ((pack <$> many1 keyChar) <|> anyStr') `sepBy1` (char '.')
   where
-    headerNameChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                                    c /= '[' && c /= ']'  && c /= '.'  && c /= '#')
-
+    keyChar = alphaNum <|> char '_' <|> char '-'
 
 -- | Parses a key-value assignment.
-assignment :: Parser (Text, TValue)
+assignment :: Parser (Text, Node)
 assignment = do
-    k <- pack <$> many1 keyChar
-    skipBlanks >> char '=' >> skipBlanks
+    k <- (pack <$> many1 keyChar) <|> anyStr'
+    many (satisfy isSpc) >> char '=' >> skipBlanks
     v <- value
     return (k, v)
   where
     -- TODO: Follow the spec, e.g.: only first char cannot be '['.
-    keyChar = satisfy (\c -> c /= ' ' && c /= '\t' && c /= '\n' &&
-                             c /= '=' && c /= '#'  && c /= '[')
+    keyChar = alphaNum <|> char '_' <|> char '-'
 
 
 -- | Parses a value.
-value :: Parser TValue
-value = (try array    <?> "array")
-    <|> (try boolean  <?> "boolean")
-    <|> (try anyStr   <?> "string")
-    <|> (try datetime <?> "datetime")
-    <|> (try float    <?> "float")
-    <|> (try integer  <?> "integer")
+value :: Parser Node
+value = (try array       <?> "array")
+    <|> (try boolean     <?> "boolean")
+    <|> (try anyStr      <?> "string")
+    <|> (try datetime    <?> "datetime")
+    <|> (try float       <?> "float")
+    <|> (try integer     <?> "integer")
+    <|> (try inlineTable <?> "inline table")
 
 
 --
 -- | * Toml value parsers
 --
 
-array :: Parser TValue
+array :: Parser Node
 array = (try (arrayOf array)    <?> "array of arrays")
     <|> (try (arrayOf boolean)  <?> "array of booleans")
     <|> (try (arrayOf anyStr)   <?> "array of strings")
@@ -135,43 +145,46 @@ array = (try (arrayOf array)    <?> "array of arrays")
     <|> (try (arrayOf integer)  <?> "array of integers")
 
 
-boolean :: Parser TValue
+boolean :: Parser Node
 boolean = VBoolean <$> ( (try . string $ "true")  *> return True  <|>
                          (try . string $ "false") *> return False )
 
 
-anyStr :: Parser TValue
-anyStr = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
+anyStr :: Parser Node
+anyStr = VString <$> anyStr'
+
+anyStr' :: Parser Text
+anyStr' = try multiBasicStr <|> try basicStr <|> try multiLiteralStr <|> try literalStr
 
 
-basicStr :: Parser TValue
-basicStr = VString <$> between dQuote dQuote (fmap pack $ many strChar)
+basicStr :: Parser Text
+basicStr = between dQuote dQuote (fmap pack $ many strChar)
   where
     strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
     dQuote  = char '\"'
 
 
-multiBasicStr :: Parser TValue
-multiBasicStr = VString <$> (openDQuote3 *> (fmap pack $ manyTill strChar dQuote3))
+multiBasicStr :: Parser Text
+multiBasicStr = (openDQuote3 *> escWhiteSpc *> (pack <$> manyTill strChar (try dQuote3)))
   where
     -- | Parse the a tripple-double quote, with possibly a newline attached
     openDQuote3 = try (dQuote3 <* char '\n') <|> try dQuote3
     -- | Parse tripple-double quotes
     dQuote3     = count 3 $ char '"'
     -- | Parse a string char, accepting escaped codes, ignoring escaped white space
-    strChar     = escWhiteSpc *> (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
+    strChar     = (escSeq <|> (satisfy (/= '\\'))) <* escWhiteSpc
     -- | Parse escaped white space, if any
     escWhiteSpc = many $ char '\\' >> char '\n' >> (many $ satisfy (\c -> isSpc c || c == '\n'))
 
 
-literalStr :: Parser TValue
-literalStr = VString <$> between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
+literalStr :: Parser Text
+literalStr = between sQuote sQuote (pack <$> many (satisfy (/= '\'')))
   where
     sQuote = char '\''
 
 
-multiLiteralStr :: Parser TValue
-multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3))
+multiLiteralStr :: Parser Text
+multiLiteralStr = (openSQuote3 *> (fmap pack $ manyTill anyChar sQuote3))
   where
     -- | Parse the a tripple-single quote, with possibly a newline attached
     openSQuote3 = try (sQuote3 <* char '\n') <|> try sQuote3
@@ -179,7 +192,7 @@ multiLiteralStr = VString <$> (openSQuote3 *> (fmap pack $ manyTill anyChar sQuo
     sQuote3     = try . count 3 . char $ '\''
 
 
-datetime :: Parser TValue
+datetime :: Parser Node
 datetime = do
     d <- manyTill anyChar (try $ char 'Z')
 #if MIN_VERSION_time(1,5,0)
@@ -192,7 +205,7 @@ datetime = do
 
 
 -- | Attoparsec 'double' parses scientific "e" notation; reimplement according to Toml spec.
-float :: Parser TValue
+float :: Parser Node
 float = VFloat <$> do
     n <- intStr <* lookAhead (satisfy (\c -> c == '.' || c == 'e' || c == 'E'))
     d <- try (satisfy (== '.') *> uintStr) <|> return "0"
@@ -200,26 +213,26 @@ float = VFloat <$> do
     return . read . L.concat $ [n, ".", d, "e", e]
   where
     sign    = try (string "-") <|> (try (char '+') >> return "") <|> return ""
-    uintStr = many1 digit
+    uintStr = (:) <$> digit <*> many (optional (char '_') *> digit)
     intStr  = do s <- sign
                  u <- uintStr
                  return . L.concat $ [s, u]
 
 
-integer :: Parser TValue
-integer = VInteger <$> (signed $ read <$> (many1 digit))
-
-
+integer :: Parser Node
+integer = VInteger <$> (signed $ read <$> uintStr)
+  where
+    uintStr = (:) <$> digit <*> many (optional (char '_') *> digit)
 
 --
 -- * Utility functions
 --
 
 -- | Parses the elements of an array, while restricting them to a certain type.
-arrayOf :: Parser TValue -> Parser TValue
+arrayOf :: Parser Node -> Parser Node
 arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedValues)
   where
-    separatedValues = sepEndBy (skipBlanks *> p <* skipBlanks) comma <* skipBlanks
+    separatedValues = sepEndBy (skipBlanks *> try p <* skipBlanks) comma <* skipBlanks
     comma           = skipBlanks >> char ',' >> skipBlanks
 
 
@@ -273,4 +286,4 @@ isSpc c = c == ' ' || c == '\t'
 
 -- | Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n' or 0x0D a.k.a. '\r'.
 eol :: Parser ()
-eol = satisfy (\c -> c == '\n' || c == '\r') >> return ()
+eol = (string "\n" <|> string "\r\n") >> return ()
