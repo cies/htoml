@@ -43,8 +43,9 @@ Or using Cabal:
 
 In order to make your project depend on it you can add it as a
 dependency in your project's `.cabal` file, and since it is not
-yet on [Stackages](https://www.stackage.org/) you will also have
-to add it to your `stack.yaml` file when using Stack.
+yet on [Stackage](https://www.stackage.org/) you will also have
+to add it to the `extra-deps` section of your `stack.yaml` file
+when using Stack.
 
 To quickly show some features of `htoml` we use Stack to start a
 GHCi-based REPL. It picks up configuration from the `.ghci` file
@@ -179,7 +180,7 @@ much appreciated.
 * See how lenses may (or may not) fit into this package, or an additional package
 
 
-### Acknoledgements
+### Acknowledgements
 
 Originally this project started off by improving the `toml` package by
 Spiros Eliopoulos.
