@@ -17,10 +17,10 @@ TOML is the obvious, minimal configuration language by
 [Tom Preston-Werner](https://github.com/mojombo).
 It is an alternative to the [XML](http://www.w3.org/TR/REC-xml/),
 [YAML](http://www.yaml.org/spec/1.2/spec.html) and
-[INI](http://en.wikipedia.org/wiki/INI_file) formats for the purpose of
-configuration files, as the first two are too heavy for that prupose,
-and the latter is underspecified.
-Toml is to configuration files, like what Markdown is for rich-text.
+[INI](http://en.wikipedia.org/wiki/INI_file) formats mainly for the purpose of
+configuration files. Many will find that XML and YAML are too heavy for
+the purpose of configuration files prupose while INI is underspecified.
+TOML is to configuration files, like what Markdown is for rich-text.
 
 This library aims to be compatible with the latest version of the
 [TOML spec](https://github.com/mojombo/toml), currently that is
