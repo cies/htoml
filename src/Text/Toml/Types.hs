@@ -25,8 +25,10 @@ import qualified Data.Vector         as V
 type Table = M.HashMap Text Node
 
 -- | A 'Node' may contain any type of value that can put in a 'VArray'.
+-- Note that the 'VITable' constructor is not exposed, as it is merely used
+-- while parsing and never returned to the user.
 data Node = VTable    Table
-          | VITable   Table
+          | VITable   Table  -- See: https://github.com/cies/htoml/issues/9
           | VTArray   [Table]
           | VString   Text
           | VInteger  Int64
@@ -37,7 +39,9 @@ data Node = VTable    Table
   deriving (Eq, Show)
 
 
--- | Turn VITables in VTables.
+-- | Turns 'VITable' (implicit table values that are only needed while
+-- parsing) values into 'VTable' values.  This to stop keeping track
+-- implicitness after parsing has completed.
 foldTable :: Table -> Table
 foldTable = M.map go
   where
