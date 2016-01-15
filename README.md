@@ -56,6 +56,9 @@ in the root of the repository.
     stack init
     stack --install-ghc ghci
 
+Add a `--resolver` flag to the `stack init` command to specify
+a specific package snapshot, e.g.: `--resolver lts-4.1`.
+
 We can now start exploring `htoml` from a GHCi REPL.
 
     > txt <- readFile "benchmarks/example.toml"
