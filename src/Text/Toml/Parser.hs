@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE CPP               #-}
 
 module Text.Toml.Parser
@@ -8,7 +9,9 @@ module Text.Toml.Parser
   ) where
 
 import           Control.Applicative hiding (many, optional, (<|>))
-import           Control.Monad       (when)
+import           Control.Monad
+import           Control.Monad.State
+
 import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
 import qualified Data.Set            as S
@@ -23,49 +26,31 @@ import           System.Locale       (defaultTimeLocale, iso8601DateFormat)
 #endif
 
 import           Numeric             (readHex)
-import           Text.Parsec
-import           Text.Parsec.Text
+import           Text.Parsec         hiding (State)
 
 import           Prelude             hiding (concat, takeWhile)  -- at end to fix redundant warning
 
 import           Text.Toml.Types
 
-
+type Parser a = forall m. Monad m => ParsecT Text () m a
 
 -- | Convenience function for the test suite and GHCI.
-parseOnly :: Parser a -> Text -> Either ParseError a
-parseOnly p str = parse (p <* eof) "test" str
+parseOnly :: ParsecT Text () (State (S.Set [Text])) a -> Text -> Either ParseError a
+parseOnly p str
+ = fst
+ $ runParserT (p <* eof) () "test" str `runState` S.empty
 
 
 -- | Parses a complete document formatted according to the TOML spec.
-tomlDoc :: Parser Table
-tomlDoc = fmap foldTable $ do
+tomlDoc :: ParsecT Text () (State (S.Set [Text])) Table
+tomlDoc = do
     skipBlanks
     topTable <- table
     namedSections <- many namedSection
-    eof  -- ensures input is completely consumed
-    case join topTable (reverse namedSections) of
-      Left msg -> fail (unpack msg)  -- TODO: allow Text in Parse Errors
-      Right r  -> return $ r
-  where
-    join tbl []     = Right tbl
-    join tbl (x:xs) = case join tbl xs of Left msg -> Left msg
-                                          Right r  -> insert x r
-
-
-failOnDuplicates :: Ord a => (a -> String) -> [(a, b)] -> Parser ()
-failOnDuplicates show' ks = do
-  let duplicates = dupes $ map fst ks
-  when (not $ null duplicates) $ fail $ L.concat [ "Overlapping keys: "
-                                                 , L.intercalate ", "
-                                                   $ map show'
-                                                   $ duplicates ]
-  where
-    dupes :: Ord a => [a] -> [a]
-    dupes xs = let xs' = L.sort xs
-               in L.concat
-                  $ zipWith (\x y -> if x == y then [x] else []) xs' (tail xs')
-
+    -- ensure the input is completely consumed
+    eof
+    -- Load each named section into the top table
+    foldM (flip (insert True)) topTable namedSections
 
 -- | Parses a table of key-value pairs.
 table :: Parser Table
@@ -237,6 +222,7 @@ float = VFloat <$> do
 integer :: Parser Node
 integer = VInteger <$> (signed $ read <$> uintStr)
   where
+    uintStr :: Parser [Char]
     uintStr = (:) <$> digit <*> many (optional (char '_') *> digit)
 
 --

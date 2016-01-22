@@ -1,6 +1,11 @@
 module Text.Toml where
 
+import           Prelude
+
+import           Control.Monad.State
+
 import           Data.Text        (Text)
+import           Data.Set (empty)
 import           Text.Parsec
 
 import           Text.Toml.Parser
@@ -10,4 +15,6 @@ import           Text.Toml.Parser
 -- containing the error message, or an internal representation
 -- of the document in the 'Toml' data type.
 parseTomlDoc :: String -> Text -> Either ParseError Table
-parseTomlDoc inputName input = parse tomlDoc inputName input
+parseTomlDoc inputName input
+ = fst
+ $ runParserT tomlDoc () inputName input `runState` empty
