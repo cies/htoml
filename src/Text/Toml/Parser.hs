@@ -50,7 +50,7 @@ tomlDoc = do
     -- ensure the input is completely consumed
     eof
     -- Load each named section into the top table
-    foldM (flip (insert True)) topTable namedSections
+    foldM (flip (insert Explicit)) topTable namedSections
 
 -- | Parses a table of key-value pairs.
 table :: Parser Table

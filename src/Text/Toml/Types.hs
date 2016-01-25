@@ -5,6 +5,7 @@ module Text.Toml.Types (
     Table
   , Node (..)
   , ToBsJSON (..)
+  , ExplicitNess (..)
   , emptyTable
   , insert
   ) where
@@ -39,6 +40,8 @@ data Node = VTable    Table
           | VArray    [Node]
   deriving (Eq, Show)
 
+data ExplicitNess = Explicit | Implicit
+
 -- | Contruct an empty 'Table'.
 emptyTable :: Table
 emptyTable = M.empty
@@ -46,7 +49,7 @@ emptyTable = M.empty
 -- | Inserts a table ('Table') with name ('[Text]') which may be part of
 -- a table array into a 'Table'.
 -- It may result in an error in the ParsecT Monad for redefinitions.
-insert :: Bool -> ([Text], Node) -> Table -> ParsecT Text () (State (Set [Text])) Table
+insert :: ExplicitNess -> ([Text], Node) -> Table -> ParsecT Text () (State (Set [Text])) Table
 insert _ ([], _)         _ = parserFail "FATAL: Cannot call 'insert' without a name."
 insert explicit ([name], node) ttbl =
     -- In case 'name' is final
@@ -56,8 +59,7 @@ insert explicit ([name], node) ttbl =
         return $ M.insert name node ttbl
       Just (VTable t)   -> case node of
         (VTable nt) -> case merge t nt of
-          Left ds -> parserFail . T.unpack $ T.concat [ "Cannot redefine key(s) (", (T.intercalate ", " ds)
-                                                      , "), from table named '", name, "'." ]
+          Left ds -> nameInsertError ds name
           Right r -> do
             testAndUpdateExplicts explicit [name] node
             return $ M.insert name (VTable r) ttbl
@@ -70,16 +72,16 @@ insert explicit (fullName@(name:ns), node) ttbl =
     -- In case 'name' is not final, but a sub-name
     case M.lookup name ttbl of
       Nothing           -> do
-        r <- insert False (ns, node) emptyTable
+        r <- insert Implicit (ns, node) emptyTable
         updateExplicts explicit fullName
         return $ M.insert name (VTable r) ttbl
       Just (VTable t)   -> do
-        r <- insert False (ns, node) t
+        r <- insert Implicit (ns, node) t
         testAndUpdateExplicts explicit fullName node
         return $ M.insert name (VTable r) ttbl
       Just (VTArray []) -> parserFail "FATAL: Call to 'insert' found impossibly empty VArray."
       Just (VTArray a)  -> do
-        r <- insert False (ns, node) (last a)
+        r <- insert Implicit (ns, node) (last a)
         return $ M.insert name (VTArray $ (init a) ++ [r]) ttbl
       Just _            -> commonInsertError node fullName
 
@@ -91,6 +93,11 @@ merge existing new = case M.keys existing `intersect` M.keys new of
                        [] -> Right $ M.union existing new
                        ds -> Left  $ ds
 
+nameInsertError :: [Text] -> Text -> ParsecT Text () m a
+nameInsertError ns name = parserFail . T.unpack $ T.concat
+    [ "Cannot redefine key(s) (", T.intercalate ", " ns
+    , "), from table named '", name, "'." ]
+
 commonInsertError :: Monad m => Node -> [Text] -> ParsecT Text () m a
 commonInsertError what name = parserFail . concat $ case what of
     _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
@@ -99,8 +106,8 @@ commonInsertError what name = parserFail . concat $ case what of
     w = case what of (VTable _)  -> "tables"
                      _           -> "array of tables"
 
-testAndUpdateExplicts :: Bool -> [Text] -> Node -> ParsecT Text () (State (Set [Text])) ()
-testAndUpdateExplicts True name node@(VTable _ ) = do
+testAndUpdateExplicts :: ExplicitNess -> [Text] -> Node -> ParsecT Text () (State (Set [Text])) ()
+testAndUpdateExplicts Explicit name node@(VTable _ ) = do
   alreadyDefinedExplicity <- lift get
   if S.member name alreadyDefinedExplicity
     then commonInsertError node name
@@ -108,8 +115,8 @@ testAndUpdateExplicts True name node@(VTable _ ) = do
   lift $ put $ S.insert name alreadyDefinedExplicity
 testAndUpdateExplicts _ _ _ = return ()
 
-updateExplicts :: Bool -> [Text] -> ParsecT Text () (State (Set [Text])) ()
-updateExplicts True name = lift . modify $ S.insert name
+updateExplicts :: ExplicitNess -> [Text] -> ParsecT Text () (State (Set [Text])) ()
+updateExplicts Explicit name = lift . modify $ S.insert name
 updateExplicts _ _ = return ()
 
 
