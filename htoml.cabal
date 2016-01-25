@@ -45,10 +45,8 @@ library
                         , vector                 >= 0.10
                         , aeson                  >= 0.8
                         , text                   >= 1.0    && < 2
-                        , mtl
                         , time                   -any
                         , old-locale             -any
-                        , transformers           >= 0.4    && < 0.6
 
 executable tests
   hs-source-dirs:         test

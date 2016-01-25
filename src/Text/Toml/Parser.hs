@@ -10,7 +10,6 @@ module Text.Toml.Parser
 
 import           Control.Applicative hiding (many, optional, (<|>))
 import           Control.Monad
-import           Control.Monad.State
 
 import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
@@ -32,17 +31,16 @@ import           Prelude             hiding (concat, takeWhile)  -- at end to fi
 
 import           Text.Toml.Types
 
-type Parser a = forall m. Monad m => ParsecT Text () m a
+type Parser a = forall s. Parsec Text s a
 
 -- | Convenience function for the test suite and GHCI.
-parseOnly :: ParsecT Text () (State (S.Set [Text])) a -> Text -> Either ParseError a
+parseOnly :: Parsec Text (S.Set [Text]) a -> Text -> Either ParseError a
 parseOnly p str
- = fst
- $ runParserT (p <* eof) () "test" str `runState` S.empty
+ = runParser (p <* eof)  S.empty "test" str
 
 
 -- | Parses a complete document formatted according to the TOML spec.
-tomlDoc :: ParsecT Text () (State (S.Set [Text])) Table
+tomlDoc :: Parsec Text (S.Set [Text]) Table
 tomlDoc = do
     skipBlanks
     topTable <- table

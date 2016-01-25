@@ -10,8 +10,6 @@ module Text.Toml.Types (
   , insert
   ) where
 
-import           Control.Monad.State
-
 import           Data.Aeson.Types
 import qualified Data.HashMap.Strict as M
 import           Data.Int            (Int64)
@@ -49,7 +47,7 @@ emptyTable = M.empty
 -- | Inserts a table ('Table') with name ('[Text]') which may be part of
 -- a table array into a 'Table'.
 -- It may result in an error in the ParsecT Monad for redefinitions.
-insert :: ExplicitNess -> ([Text], Node) -> Table -> ParsecT Text () (State (Set [Text])) Table
+insert :: ExplicitNess -> ([Text], Node) -> Table -> Parsec Text (Set [Text]) Table
 insert _ ([], _)         _ = parserFail "FATAL: Cannot call 'insert' without a name."
 insert explicit ([name], node) ttbl =
     -- In case 'name' is final
@@ -93,12 +91,12 @@ merge existing new = case M.keys existing `intersect` M.keys new of
                        [] -> Right $ M.union existing new
                        ds -> Left  $ ds
 
-nameInsertError :: [Text] -> Text -> ParsecT Text () m a
+nameInsertError :: [Text] -> Text -> Parsec Text (Set [Text]) a
 nameInsertError ns name = parserFail . T.unpack $ T.concat
     [ "Cannot redefine key(s) (", T.intercalate ", " ns
     , "), from table named '", name, "'." ]
 
-commonInsertError :: Monad m => Node -> [Text] -> ParsecT Text () m a
+commonInsertError :: Node -> [Text] -> Parsec Text (Set [Text]) a
 commonInsertError what name = parserFail . concat $ case what of
     _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
   where
@@ -106,17 +104,17 @@ commonInsertError what name = parserFail . concat $ case what of
     w = case what of (VTable _)  -> "tables"
                      _           -> "array of tables"
 
-testAndUpdateExplicts :: ExplicitNess -> [Text] -> Node -> ParsecT Text () (State (Set [Text])) ()
+testAndUpdateExplicts :: ExplicitNess -> [Text] -> Node -> Parsec Text (Set [Text]) ()
 testAndUpdateExplicts Explicit name node@(VTable _) = do
-  alreadyDefinedExplicity <- lift get
+  alreadyDefinedExplicity <- getState
   if S.member name alreadyDefinedExplicity
     then commonInsertError node name
     else return ()
-  lift $ put $ S.insert name alreadyDefinedExplicity
+  putState $ S.insert name alreadyDefinedExplicity
 testAndUpdateExplicts _ _ _ = return ()
 
-updateExplicts :: ExplicitNess -> [Text] -> Node -> ParsecT Text () (State (Set [Text])) ()
-updateExplicts Explicit name (VTable _) = lift . modify $ S.insert name
+updateExplicts :: ExplicitNess -> [Text] -> Node -> Parsec Text (S.Set [Text]) ()
+updateExplicts Explicit name (VTable _) = modifyState $ S.insert name
 updateExplicts _ _ _ = return ()
 
 
