@@ -41,7 +41,6 @@ library
   build-depends:          base                   >= 4.3    && < 5
                         , parsec                 >= 3.1.2  && < 4
                         , containers             >= 0.5
-                        , either
                         , unordered-containers   >= 0.2
                         , vector                 >= 0.10
                         , aeson                  >= 0.8
@@ -49,7 +48,7 @@ library
                         , mtl
                         , time                   -any
                         , old-locale             -any
-                        , transformers           == 0.4.*
+                        , transformers           >= 0.4    && < 0.6
 
 executable tests
   hs-source-dirs:         test

@@ -55,7 +55,7 @@ insert explicit ([name], node) ttbl =
     -- In case 'name' is final
     case M.lookup name ttbl of
       Nothing           -> do
-        updateExplicts explicit [name]
+        updateExplicts explicit [name] node
         return $ M.insert name node ttbl
       Just (VTable t)   -> case node of
         (VTable nt) -> case merge t nt of
@@ -73,7 +73,7 @@ insert explicit (fullName@(name:ns), node) ttbl =
     case M.lookup name ttbl of
       Nothing           -> do
         r <- insert Implicit (ns, node) emptyTable
-        updateExplicts explicit fullName
+        updateExplicts explicit fullName node
         return $ M.insert name (VTable r) ttbl
       Just (VTable t)   -> do
         r <- insert Implicit (ns, node) t
@@ -107,7 +107,7 @@ commonInsertError what name = parserFail . concat $ case what of
                      _           -> "array of tables"
 
 testAndUpdateExplicts :: ExplicitNess -> [Text] -> Node -> ParsecT Text () (State (Set [Text])) ()
-testAndUpdateExplicts Explicit name node@(VTable _ ) = do
+testAndUpdateExplicts Explicit name node@(VTable _) = do
   alreadyDefinedExplicity <- lift get
   if S.member name alreadyDefinedExplicity
     then commonInsertError node name
@@ -115,9 +115,9 @@ testAndUpdateExplicts Explicit name node@(VTable _ ) = do
   lift $ put $ S.insert name alreadyDefinedExplicity
 testAndUpdateExplicts _ _ _ = return ()
 
-updateExplicts :: ExplicitNess -> [Text] -> ParsecT Text () (State (Set [Text])) ()
-updateExplicts Explicit name = lift . modify $ S.insert name
-updateExplicts _ _ = return ()
+updateExplicts :: ExplicitNess -> [Text] -> Node -> ParsecT Text () (State (Set [Text])) ()
+updateExplicts Explicit name (VTable _) = lift . modify $ S.insert name
+updateExplicts _ _ _ = return ()
 
 
 -- * Regular ToJSON instances

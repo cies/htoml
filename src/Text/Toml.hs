@@ -1,7 +1,5 @@
 module Text.Toml where
 
-import           Prelude
-
 import           Control.Monad.State
 
 import           Data.Text        (Text)
