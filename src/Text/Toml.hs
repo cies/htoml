@@ -11,5 +11,4 @@ import           Text.Toml.Parser
 -- containing the error message, or an internal representation
 -- of the document in the 'Toml' data type.
 parseTomlDoc :: String -> Text -> Either ParseError Table
-parseTomlDoc inputName input
- = runParser tomlDoc empty inputName input
+parseTomlDoc inputName input = runParser tomlDoc empty inputName input

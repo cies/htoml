@@ -25,18 +25,17 @@ import           System.Locale       (defaultTimeLocale, iso8601DateFormat)
 #endif
 
 import           Numeric             (readHex)
-import           Text.Parsec         hiding (State)
-
-import           Prelude             hiding (concat, takeWhile)  -- at end to fix redundant warning
+import           Text.Parsec
 
 import           Text.Toml.Types
+
+import           Prelude             hiding (concat, takeWhile)  -- at end to fix redundant warning
 
 type Parser a = forall s. Parsec Text s a
 
 -- | Convenience function for the test suite and GHCI.
 parseOnly :: Parsec Text (S.Set [Text]) a -> Text -> Either ParseError a
-parseOnly p str
- = runParser (p <* eof)  S.empty "test" str
+parseOnly p str = runParser (p <* eof)  S.empty "test" str
 
 
 -- | Parses a complete document formatted according to the TOML spec.

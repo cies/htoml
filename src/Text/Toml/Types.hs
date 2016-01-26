@@ -22,7 +22,7 @@ import           Data.Time.Clock     (UTCTime)
 import           Data.Time.Format    ()
 import qualified Data.Vector         as V
 
-import           Text.Parsec hiding (State)
+import           Text.Parsec
 
 -- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
 type Table = M.HashMap Text Node
@@ -96,6 +96,10 @@ nameInsertError ns name = parserFail . T.unpack $ T.concat
     [ "Cannot redefine key(s) (", T.intercalate ", " ns
     , "), from table named '", name, "'." ]
 
+tableClashError :: [Text] -> Parsec Text (Set [Text]) a
+tableClashError name = parserFail . T.unpack $ T.concat
+    [ "Cannot redefine table ('", T.intercalate ", " name , "'." ]
+
 commonInsertError :: Node -> [Text] -> Parsec Text (Set [Text]) a
 commonInsertError what name = parserFail . concat $ case what of
     _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
@@ -104,11 +108,15 @@ commonInsertError what name = parserFail . concat $ case what of
     w = case what of (VTable _)  -> "tables"
                      _           -> "array of tables"
 
+-- TOML tables must be able to be redefined and merged, as one can create a top table `a`
+-- implicitly with `[a.b]` and then later add to it (it already contains a table `b`) with
+-- `[a]`. We maintain a parser state of all tables which are explicitly defined, to make
+-- redefinition illegal.
 testAndUpdateExplicts :: ExplicitNess -> [Text] -> Node -> Parsec Text (Set [Text]) ()
-testAndUpdateExplicts Explicit name node@(VTable _) = do
+testAndUpdateExplicts Explicit name (VTable _) = do
   alreadyDefinedExplicity <- getState
   if S.member name alreadyDefinedExplicity
-    then commonInsertError node name
+    then tableClashError name
     else return ()
   putState $ S.insert name alreadyDefinedExplicity
 testAndUpdateExplicts _ _ _ = return ()
