@@ -1,15 +1,18 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase #-}
+
 module Text.Toml.Types (
     Table
-  , Node (..)
-  , ToBsJSON (..)
-  , ExplicitNess (..)
   , emptyTable
+  , Node (..)
+  , Explicitness (..)
+  , isExplicit
   , insert
+  , ToBsJSON (..)
   ) where
 
+import           Control.Monad       (when)
+import           Text.Parsec
 import           Data.Aeson.Types
 import qualified Data.HashMap.Strict as M
 import           Data.Int            (Int64)
@@ -22,10 +25,13 @@ import           Data.Time.Clock     (UTCTime)
 import           Data.Time.Format    ()
 import qualified Data.Vector         as V
 
-import           Text.Parsec
 
 -- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
 type Table = M.HashMap Text Node
+
+-- | Contruct an empty 'Table'.
+emptyTable :: Table
+emptyTable = M.empty
 
 -- | A 'Node' may contain any type of value that can put in a 'VArray'.
 data Node = VTable    Table
@@ -38,92 +44,105 @@ data Node = VTable    Table
           | VArray    [Node]
   deriving (Eq, Show)
 
-data ExplicitNess = Explicit | Implicit
+-- | To mark whether or not a 'Table' has been explicitly defined.
+-- See: https://github.com/toml-lang/toml/issues/376
+data Explicitness = Explicit | Implicit
 
--- | Contruct an empty 'Table'.
-emptyTable :: Table
-emptyTable = M.empty
+-- | Convenience function to get a boolean value.
+isExplicit :: Explicitness -> Bool
+isExplicit Explicit = True
+isExplicit Implicit = False
 
--- | Inserts a table ('Table') with name ('[Text]') which may be part of
--- a table array into a 'Table'.
--- It may result in an error in the ParsecT Monad for redefinitions.
-insert :: ExplicitNess -> ([Text], Node) -> Table -> Parsec Text (Set [Text]) Table
-insert _ ([], _)         _ = parserFail "FATAL: Cannot call 'insert' without a name."
-insert explicit ([name], node) ttbl =
-    -- In case 'name' is final
+
+-- | Inserts a table, 'Table', with the namespaced name, '[Text]', (which
+-- may be part of a table array) into a 'Table'.
+-- It may result in an error in the 'ParsecT' monad for redefinitions.
+insert :: Explicitness -> ([Text], Node) -> Table -> Parsec Text (Set [Text]) Table
+insert _ ([], _) _ = parserFail "FATAL: Cannot call 'insert' without a name."
+insert ex ([name], node) ttbl =
+    -- In case 'name' is final (a top-level name)
     case M.lookup name ttbl of
-      Nothing           -> do
-        updateExplicts explicit [name] node
-        return $ M.insert name node ttbl
-      Just (VTable t)   -> case node of
-        (VTable nt) -> case merge t nt of
-          Left ds -> nameInsertError ds name
-          Right r -> do
-            testAndUpdateExplicts explicit [name] node
-            return $ M.insert name (VTable r) ttbl
-        _         -> commonInsertError node [name]
-      Just (VTArray a)  -> case node of
-        (VTArray na) -> return $ M.insert name (VTArray $ a ++ na) ttbl
-        _            -> commonInsertError node [name]
-      Just _            -> commonInsertError node [name]
-insert explicit (fullName@(name:ns), node) ttbl =
-    -- In case 'name' is not final, but a sub-name
+      Nothing -> do when (isExplicit ex) $ updateExState [name] node
+                    return $ M.insert name node ttbl
+      Just (VTable t) -> case node of
+          (VTable nt) -> case merge t nt of
+                  Left ds -> nameInsertError ds name
+                  Right r -> do when (isExplicit ex) $
+                                  updateExStateOrError [name] node
+                                return $ M.insert name (VTable r) ttbl
+          _ -> commonInsertError node [name]
+      Just (VTArray a) -> case node of
+          (VTArray na) -> return $ M.insert name (VTArray $ a ++ na) ttbl
+          _ -> commonInsertError node [name]
+      Just _ -> commonInsertError node [name]
+insert ex (fullName@(name:ns), node) ttbl =
+    -- In case 'name' is not final (not a top-level name)
     case M.lookup name ttbl of
-      Nothing           -> do
-        r <- insert Implicit (ns, node) emptyTable
-        updateExplicts explicit fullName node
-        return $ M.insert name (VTable r) ttbl
-      Just (VTable t)   -> do
-        r <- insert Implicit (ns, node) t
-        testAndUpdateExplicts explicit fullName node
-        return $ M.insert name (VTable r) ttbl
-      Just (VTArray []) -> parserFail "FATAL: Call to 'insert' found impossibly empty VArray."
-      Just (VTArray a)  -> do
-        r <- insert Implicit (ns, node) (last a)
-        return $ M.insert name (VTArray $ (init a) ++ [r]) ttbl
-      Just _            -> commonInsertError node fullName
+      Nothing -> do
+          r <- insert Implicit (ns, node) emptyTable
+          when (isExplicit ex) $ updateExState fullName node
+          return $ M.insert name (VTable r) ttbl
+      Just (VTable t) -> do
+          r <- insert Implicit (ns, node) t
+          when (isExplicit ex) $ updateExStateOrError fullName node
+          return $ M.insert name (VTable r) ttbl
+      Just (VTArray []) ->
+          parserFail "FATAL: Call to 'insert' found impossibly empty VArray."
+      Just (VTArray a) -> do
+          r <- insert Implicit (ns, node) (last a)
+          return $ M.insert name (VTArray $ (init a) ++ [r]) ttbl
+      Just _ -> commonInsertError node fullName
+
 
 -- | Merge two tables, resulting in an error when overlapping keys are
--- found ('Left' will contian those keys).  When no overlapping keys are
+-- found ('Left' will contain those keys).  When no overlapping keys are
 -- found the result will contain the union of both tables in a 'Right'.
 merge :: Table -> Table -> Either [Text] Table
 merge existing new = case M.keys existing `intersect` M.keys new of
                        [] -> Right $ M.union existing new
                        ds -> Left  $ ds
 
+-- TOML tables maybe redefined when first definition was implicit.
+-- For instance a top-level table `a` can implicitly defined by defining a non top-level
+-- table `b` under it (namely with `[a.b]`). Once the table `a` is subsequently defined
+-- explicitly (namely with `[a]`), it is then not possible to (re-)define it again.
+-- A parser state of all explicitly defined tables is maintained, which allows
+-- raising errors for illegal redefinitions of such.
+updateExStateOrError :: [Text] -> Node -> Parsec Text (Set [Text]) ()
+updateExStateOrError name node@(VTable _) = do
+    explicitlyDefinedNames <- getState
+    when (S.member name explicitlyDefinedNames) $ tableClashError name
+    updateExState name node
+updateExStateOrError _ _ = return ()
+
+-- | Like 'updateExStateOrError' but does not raise errors. Only use this when sure
+-- that redefinitions cannot occur.
+updateExState :: [Text] -> Node -> Parsec Text (S.Set [Text]) ()
+updateExState name (VTable _) = modifyState $ S.insert name
+updateExState _ _ = return ()
+
+
+-- * Parse errors resulting from invalid TOML
+
+-- | Key(s) redefintion error.
 nameInsertError :: [Text] -> Text -> Parsec Text (Set [Text]) a
 nameInsertError ns name = parserFail . T.unpack $ T.concat
     [ "Cannot redefine key(s) (", T.intercalate ", " ns
     , "), from table named '", name, "'." ]
 
+-- | Table redefinition error.
 tableClashError :: [Text] -> Parsec Text (Set [Text]) a
 tableClashError name = parserFail . T.unpack $ T.concat
     [ "Cannot redefine table ('", T.intercalate ", " name , "'." ]
 
+-- | Common redefinition error.
 commonInsertError :: Node -> [Text] -> Parsec Text (Set [Text]) a
-commonInsertError what name = parserFail . concat $ case what of
-    _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
+commonInsertError what name = parserFail . concat $
+    [ "Cannot insert ", w, " '", n, "' as key already exists." ]
   where
     n = T.unpack $ T.intercalate "." name
-    w = case what of (VTable _)  -> "tables"
-                     _           -> "array of tables"
-
--- TOML tables must be able to be redefined and merged, as one can create a top table `a`
--- implicitly with `[a.b]` and then later add to it (it already contains a table `b`) with
--- `[a]`. We maintain a parser state of all tables which are explicitly defined, to make
--- redefinition illegal.
-testAndUpdateExplicts :: ExplicitNess -> [Text] -> Node -> Parsec Text (Set [Text]) ()
-testAndUpdateExplicts Explicit name (VTable _) = do
-  alreadyDefinedExplicity <- getState
-  if S.member name alreadyDefinedExplicity
-    then tableClashError name
-    else return ()
-  putState $ S.insert name alreadyDefinedExplicity
-testAndUpdateExplicts _ _ _ = return ()
-
-updateExplicts :: ExplicitNess -> [Text] -> Node -> Parsec Text (S.Set [Text]) ()
-updateExplicts Explicit name (VTable _) = modifyState $ S.insert name
-updateExplicts _ _ _ = return ()
+    w = case what of (VTable _) -> "tables"
+                     _          -> "array of tables"
 
 
 -- * Regular ToJSON instances

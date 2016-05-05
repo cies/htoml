@@ -29,9 +29,13 @@ import           Text.Parsec
 
 import           Text.Toml.Types
 
-import           Prelude             hiding (concat, takeWhile)  -- at end to fix redundant warning
+-- Imported as last to fix redundancy warning
+import           Prelude             hiding (concat, takeWhile)
 
+
+-- | Our very own Parser type.
 type Parser a = forall s. Parsec Text s a
+
 
 -- | Convenience function for the test suite and GHCI.
 parseOnly :: Parsec Text (S.Set [Text]) a -> Text -> Either ParseError a
@@ -44,7 +48,7 @@ tomlDoc = do
     skipBlanks
     topTable <- table
     namedSections <- many namedSection
-    -- ensure the input is completely consumed
+    -- Ensure the input is completely consumed
     eof
     -- Load each named section into the top table
     foldM (flip (insert Explicit)) topTable namedSections
@@ -53,14 +57,15 @@ tomlDoc = do
 table :: Parser Table
 table = do
     pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
-    case hasDup' (map fst pairs) of
+    case maybeDupe (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
       Nothing -> return $ M.fromList pairs
 
+-- | Parses an inline table of key-value pairs.
 inlineTable :: Parser Node
 inlineTable = do
     pairs <- between (char '{') (char '}') (skipSpaces *> separatedValues <* skipSpaces)
-    case hasDup' (map fst pairs) of
+    case maybeDupe (map fst pairs) of
       Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
       Nothing -> return $ VTable $ M.fromList pairs
   where
@@ -68,11 +73,12 @@ inlineTable = do
     separatedValues = sepBy (skipSpaces *> assignment <* skipSpaces) comma
     comma           = skipSpaces >> char ',' >> skipSpaces
 
-hasDup'        :: Ord a => [a] -> Maybe a
-hasDup' xx     = dup' xx S.empty
+-- | Find dupes, if any.
+maybeDupe :: Ord a => [a] -> Maybe a
+maybeDupe xx = dup xx S.empty
   where
-    dup' []     _ = Nothing
-    dup' (x:xs) s = if S.member x s then Just x else dup' xs (S.insert x s)
+    dup []     _ = Nothing
+    dup (x:xs) s = if S.member x s then Just x else dup xs (S.insert x s)
 
 
 -- | Parses a 'Table' or 'TableArray' with its header.
