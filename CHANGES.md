@@ -5,9 +5,11 @@ Change log
 * ...
 
 #### 0.2.0.0
-* Now compatible with TOML 0.4.0
-* Improved test suite (all test now pass)
+* Compatible with TOML 0.4.0
+* Improve test suite (all test now pass -- thanks @HuwCampbell)
 * Slight API breakage (therefore major version bump)
+* Use Parsec's parser state to track explicitness of table definitions (thanks @HuwCampbell)
+* Clean up docs and code
 
 #### 0.1.0.3
 * GHC 7.10 compatibility fix (thanks @erebe)
