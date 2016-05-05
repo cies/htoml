@@ -64,7 +64,7 @@ executable tests
                         , text
                         , time
                         , bytestring             >= 0.9
-                        , file-embed             >= 0.0.5
+                        , file-embed             >= 0.0.10
                         , Cabal                  >= 1.16.0
                         , tasty                  >= 0.10
                         , tasty-hspec            >= 0.2
