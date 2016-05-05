@@ -37,7 +37,7 @@ Installing `htoml` is easy. Either by using
 
     stack install htoml
 
-Or using Cabal:
+Or by using Cabal:
 
     cabal install htoml
 
