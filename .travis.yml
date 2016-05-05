@@ -31,11 +31,11 @@ before_install:
 # around some quirks in Travis's terminal implementation.
 script:
 # --force so it overwrites stack.yaml after the first run
-- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc init --force
-# automatically add hackage deps to stack.yaml using the `solver` command
-- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
-- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
-- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --update-config
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc init --force --solver
+### automatically add hackage deps to stack.yaml using the `solver` command
+###- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
+###- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
+### - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --update-config
 # for debug purpose, know what's going on
 - cat stack.yaml
 # build and run the test
