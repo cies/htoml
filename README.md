@@ -181,11 +181,15 @@ much appreciated.
 ### Todo
 
 * Release a stable 1.0 release and submit it to [Stackage](http://stackage.org)
+* Once 1.0 is out, keep a compatibility chart showing which versions of htoml are
+  compatible with which versions of the TOML spec
 * More documentation
 * Add property tests with QuickCheck (the internet says it's possible for parsers)
 * Extensively test error cases
 * Try using `Vector` instead of `List` (measure performance increase with the benchmarks)
 * See how lenses may (or may not) fit into this package, or an additional package
+* Consider moving to [one of the more modern parser combinators](https://www.reddit.com/r/haskell/comments/46u45o/what_is_the_current_state_of_parser_libraries_in)
+  in Haskell (`megaparsec` maybe?) -- possibly wait until a clear winner shows
 
 
 ### Acknowledgements
