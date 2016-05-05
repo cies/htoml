@@ -33,9 +33,8 @@ script:
 # `--solver` needs `cabal` on the PATH
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
-# --force so it overwrites stack.yaml after the first run
+# `--force` so it overwrites stack.yaml after the first run, `--solver` so it picks `extra-deps`
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc init --force --solver
-### - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --update-config
 # for debug purpose, know what's going on
 - cat stack.yaml
 # build and run the test

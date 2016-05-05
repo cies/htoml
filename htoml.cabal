@@ -10,7 +10,7 @@ homepage:                 https://github.com/cies/htoml
 bug-reports:              https://github.com/cies/htoml/issues
 license:                  BSD3
 license-file:             LICENSE
-copyright:                (c) 2013-2015 Cies Breijs
+copyright:                (c) 2013-2016 Cies Breijs
 author:                   Cies Breijs
 maintainer:               Cies Breijs <cies % kde ! nl>
 category:                 Data, Text, Parser, Configuration, JSON, Language
