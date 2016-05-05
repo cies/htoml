@@ -16,6 +16,7 @@ env:
 - ARGS="--resolver lts-2"
 - ARGS="--resolver lts-3"
 - ARGS="--resolver lts-4"
+- ARGS="--resolver lts-5"
 - ARGS="--resolver lts"
 - ARGS="--resolver nightly"
 
@@ -34,7 +35,7 @@ script:
 # automatically add hackage deps to stack.yaml using the `solver` command
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
-- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --modify-stack-yaml
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --update-config
 # for debug purpose, know what's going on
 - cat stack.yaml
 # build and run the test
