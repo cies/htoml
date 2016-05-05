@@ -30,11 +30,11 @@ before_install:
 # executables, and test suites, and runs the test suites. --no-terminal works
 # around some quirks in Travis's terminal implementation.
 script:
+# `--solver` needs `cabal` on the PATH
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
+- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
 # --force so it overwrites stack.yaml after the first run
 - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc init --force --solver
-### automatically add hackage deps to stack.yaml using the `solver` command
-###- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc setup
-###- ./.travis_long.sh stack $ARGS --no-terminal --install-ghc install cabal-install
 ### - ./.travis_long.sh stack $ARGS --no-terminal --install-ghc solver --update-config
 # for debug purpose, know what's going on
 - cat stack.yaml
