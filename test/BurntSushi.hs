@@ -18,7 +18,7 @@ import           Text.Toml.Types
 
 
 allFiles :: [(FilePath, B.ByteString)]
-allFiles = $(embedDir "test/BurntSushi")
+allFiles = $(makeRelativeToProject "test/BurntSushi" >>= embedDir)
 
 
 validPairs :: [(String, (B.ByteString, B.ByteString))]
