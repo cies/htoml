@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE LambdaCase #-}
 module Text.Toml.Types (
     Table
-  , Node (VTable, VTArray, VString, VInteger, VFloat, VBoolean, VDatetime, VArray)
+  , Node (..)
   , ToBsJSON (..)
-  , foldTable
+  , ExplicitNess (..)
   , emptyTable
   , insert
   ) where
@@ -14,91 +14,74 @@ import           Data.Aeson.Types
 import qualified Data.HashMap.Strict as M
 import           Data.Int            (Int64)
 import           Data.List           (intersect)
+import           Data.Set (Set)
+import qualified Data.Set            as S
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
 import           Data.Time.Format    ()
 import qualified Data.Vector         as V
 
+import           Text.Parsec
 
 -- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
 type Table = M.HashMap Text Node
 
 -- | A 'Node' may contain any type of value that can put in a 'VArray'.
--- Note that the 'VITable' constructor is not exposed, as it is merely used
--- while parsing and never returned to the user.
 data Node = VTable    Table
-          | VITable   Table  -- See: https://github.com/cies/htoml/issues/9
           | VTArray   [Table]
-          | VString   Text
-          | VInteger  Int64
-          | VFloat    Double
-          | VBoolean  Bool
-          | VDatetime UTCTime
+          | VString   !Text
+          | VInteger  !Int64
+          | VFloat    !Double
+          | VBoolean  !Bool
+          | VDatetime !UTCTime
           | VArray    [Node]
   deriving (Eq, Show)
 
-
--- | Turns 'VITable' (implicit table values that are only needed while
--- parsing) values into 'VTable' values.  This to stop keeping track
--- implicitness after parsing has completed.
-foldTable :: Table -> Table
-foldTable = M.map go
-  where
-    go (VTable  t) = VTable $ foldTable t
-    go (VITable t) = VTable $ foldTable t
-    go (VTArray t) = VTArray $ fmap foldTable t
-    go other       = other
+data ExplicitNess = Explicit | Implicit
 
 -- | Contruct an empty 'Table'.
 emptyTable :: Table
 emptyTable = M.empty
 
--- | Inserts one-or-more nodes ('Node') with the namespaced name ('[Text]')
--- into a 'Table'.
--- It may result in an error ('Text') on the 'Left' or a modified table
--- on the 'Right'.
-insert :: ([Text], Node) -> Table -> Either Text Table
-insert ([], _) _ = Left "FATAL: Cannot call 'insert' without a name."
-insert ([name], node) ttbl =
-    -- In case 'name' is not prefixed by a sub-name
+-- | Inserts a table ('Table') with name ('[Text]') which may be part of
+-- a table array into a 'Table'.
+-- It may result in an error in the ParsecT Monad for redefinitions.
+insert :: ExplicitNess -> ([Text], Node) -> Table -> Parsec Text (Set [Text]) Table
+insert _ ([], _)         _ = parserFail "FATAL: Cannot call 'insert' without a name."
+insert explicit ([name], node) ttbl =
+    -- In case 'name' is final
     case M.lookup name ttbl of
-      Nothing           -> Right $ M.insert name node ttbl
-      Just (VITable t)  -> case node of
-        (VITable nt) -> case merge t nt of
-                          Left ds -> Left $ commonNameInsertError ds [name]
-                          Right r -> Right $ M.insert name (VITable r) ttbl
-        (VTable nt)  -> case merge t nt of
-                          Left ds -> Left $ commonNameInsertError ds [name]
-                          Right r -> Right $ M.insert name (VTable r) ttbl
-        _            -> Left $ commonNodeInsertError node [name]
+      Nothing           -> do
+        updateExplicts explicit [name] node
+        return $ M.insert name node ttbl
       Just (VTable t)   -> case node of
-        (VITable nt) -> case merge t nt of
-                          Left ds -> Left $ commonNameInsertError ds [name]
-                          Right r -> Right $ M.insert name (VTable r) ttbl
-        _            -> Left $ commonNodeInsertError node [name]
+        (VTable nt) -> case merge t nt of
+          Left ds -> nameInsertError ds name
+          Right r -> do
+            testAndUpdateExplicts explicit [name] node
+            return $ M.insert name (VTable r) ttbl
+        _         -> commonInsertError node [name]
       Just (VTArray a)  -> case node of
-                          (VTArray na) -> Right $ M.insert name (VTArray $ a ++ na) ttbl
-                          _            -> Left $ commonNodeInsertError node [name]
-      Just _            -> Left $ commonNodeInsertError node [name]
-insert (fullName@(name:ns), node) ttbl =
-    -- In case 'name' is the merely a part of the full name
+        (VTArray na) -> return $ M.insert name (VTArray $ a ++ na) ttbl
+        _            -> commonInsertError node [name]
+      Just _            -> commonInsertError node [name]
+insert explicit (fullName@(name:ns), node) ttbl =
+    -- In case 'name' is not final, but a sub-name
     case M.lookup name ttbl of
-      Nothing           -> case insert (ns, node) emptyTable of
-                             Left msg -> Left msg
-                             Right r  -> Right $ M.insert name (VITable r) ttbl
-      Just (VTable t)   -> case insert (ns, node) t of
-                             Left msg -> Left msg
-                             Right tt -> Right $ M.insert name (VTable tt) ttbl
-      Just (VITable t)  -> case insert (ns, node) t of
-                             Left msg -> Left msg
-                             Right tt -> Right $ M.insert name (VITable tt) ttbl
-      Just (VTArray []) -> Left "FATAL: Call to 'insert' found impossibly empty VArray."
-      Just (VTArray a)  -> case insert (ns, node) (last a) of
-                             Left msg -> Left msg
-                             Right t  -> Right $ M.insert name (VTArray $ (init a) ++ [t]) ttbl
-      Just _            -> Left $ commonNodeInsertError node fullName
-
+      Nothing           -> do
+        r <- insert Implicit (ns, node) emptyTable
+        updateExplicts explicit fullName node
+        return $ M.insert name (VTable r) ttbl
+      Just (VTable t)   -> do
+        r <- insert Implicit (ns, node) t
+        testAndUpdateExplicts explicit fullName node
+        return $ M.insert name (VTable r) ttbl
+      Just (VTArray []) -> parserFail "FATAL: Call to 'insert' found impossibly empty VArray."
+      Just (VTArray a)  -> do
+        r <- insert Implicit (ns, node) (last a)
+        return $ M.insert name (VTArray $ (init a) ++ [r]) ttbl
+      Just _            -> commonInsertError node fullName
 
 -- | Merge two tables, resulting in an error when overlapping keys are
 -- found ('Left' will contian those keys).  When no overlapping keys are
@@ -108,17 +91,39 @@ merge existing new = case M.keys existing `intersect` M.keys new of
                        [] -> Right $ M.union existing new
                        ds -> Left  $ ds
 
-commonNodeInsertError :: Node -> [Text] -> Text
-commonNodeInsertError node name = T.concat $
-    let w = case node of (VTable _)  -> "tables"
-                         (VITable _) -> "tables"
-                         _           -> "array of tables"
-    in ["Cannot insert ", w, " '", T.intercalate "." name, "' as key already exists."]
-
-commonNameInsertError :: [Text] -> [Text] -> Text
-commonNameInsertError ns name = T.concat
+nameInsertError :: [Text] -> Text -> Parsec Text (Set [Text]) a
+nameInsertError ns name = parserFail . T.unpack $ T.concat
     [ "Cannot redefine key(s) (", T.intercalate ", " ns
-    , "), from table named '", T.intercalate "." name, "'." ]
+    , "), from table named '", name, "'." ]
+
+tableClashError :: [Text] -> Parsec Text (Set [Text]) a
+tableClashError name = parserFail . T.unpack $ T.concat
+    [ "Cannot redefine table ('", T.intercalate ", " name , "'." ]
+
+commonInsertError :: Node -> [Text] -> Parsec Text (Set [Text]) a
+commonInsertError what name = parserFail . concat $ case what of
+    _         -> ["Cannot insert ", w, " '", n, "' as key already exists."]
+  where
+    n = T.unpack $ T.intercalate "." name
+    w = case what of (VTable _)  -> "tables"
+                     _           -> "array of tables"
+
+-- TOML tables must be able to be redefined and merged, as one can create a top table `a`
+-- implicitly with `[a.b]` and then later add to it (it already contains a table `b`) with
+-- `[a]`. We maintain a parser state of all tables which are explicitly defined, to make
+-- redefinition illegal.
+testAndUpdateExplicts :: ExplicitNess -> [Text] -> Node -> Parsec Text (Set [Text]) ()
+testAndUpdateExplicts Explicit name (VTable _) = do
+  alreadyDefinedExplicity <- getState
+  if S.member name alreadyDefinedExplicity
+    then tableClashError name
+    else return ()
+  putState $ S.insert name alreadyDefinedExplicity
+testAndUpdateExplicts _ _ _ = return ()
+
+updateExplicts :: ExplicitNess -> [Text] -> Node -> Parsec Text (S.Set [Text]) ()
+updateExplicts Explicit name (VTable _) = modifyState $ S.insert name
+updateExplicts _ _ _ = return ()
 
 
 -- * Regular ToJSON instances
@@ -127,7 +132,6 @@ commonNameInsertError ns name = T.concat
 -- in line with the TOML specification.
 instance ToJSON Node where
   toJSON (VTable v)    = toJSON v
-  toJSON (VITable v)   = toJSON v
   toJSON (VTArray v)   = toJSON v
   toJSON (VString v)   = toJSON v
   toJSON (VInteger v)  = toJSON v
@@ -167,7 +171,6 @@ instance (ToBsJSON v) => ToBsJSON (M.HashMap Text v) where
 -- specifies the types of the values.
 instance ToBsJSON Node where
   toBsJSON (VTable v)    = toBsJSON v
-  toBsJSON (VITable v)   = toBsJSON v
   toBsJSON (VTArray v)   = toBsJSON v
   toBsJSON (VString v)   = object [ "type"  .= toJSON ("string" :: String)
                                   , "value" .= toJSON v ]
