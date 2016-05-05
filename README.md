@@ -59,22 +59,28 @@ in the root of the repository.
 Add a `--resolver` flag to the `stack init` command to specify
 a specific package snapshot, e.g.: `--resolver lts-4.1`.
 
+In case you have missing dependencies (possibly `file-embed`),
+they can be added to the `extra-deps` in `stack.yaml`
+automatically with:
+
+    stack solver --update-config
+
 We can now start exploring `htoml` from a GHCi REPL.
 
     > txt <- readFile "benchmarks/example.toml"
     > let r = parseTomlDoc "" txt
     > r
-    Right (fromList [("database",NTable (fromList [("enabled",NTValue (VBoolean True) [...]
+    Right (fromList [("database",VTable (fromList [("enabled",VBoolean True),("po [...]
 
     > let Right toml = r
     > toJSON toml
-    Object (fromList [("database",Object (fromList [("enabled",Bool True) [...]
+    Object (fromList [("database",Object (fromList [("enabled",Bool True),("po [...]
 
-    > let Left error = parseTomlDoc "" "== invalid toml =="
-    > e
+    > let Left err = parseTomlDoc "" "== invalid toml =="
+    > err
     (line 1, column 1):
     unexpected '='
-    expecting "#", "[" or end of input
+    expecting "#", "\n", "\r\n", letter or digit, "_", "-", "\"", "'", "[" or end of inputr
 
 Notice that some outputs are truncated, indicated by `[...]`.
 
@@ -88,7 +94,7 @@ To do so you have two main options. The first is to use pattern matching.
 For example let's consider the following `parseResult`:
 
 ```haskell
-Right (fromList [("server",NTable (fromList [("enabled",NTValue (VBoolean True))] ) )] )
+Right (fromList [("server",VTable (fromList [("enabled",VBoolean True)] ) )] )
 ```
 
 Which could be pattern matched with:
@@ -97,7 +103,7 @@ Which could be pattern matched with:
 case parseResult of
   Left  _ -> "Could not parse file"
   Right m -> case m ! "server" of
-    NTable mm -> case mm ! "enabled" of
+    VTable mm -> case mm ! "enabled" of
       VBoolean b -> "Server is " ++ (if b then "enabled" else "disabled")
       _ -> "Could not parse server status (Boolean)"
     _ -> "TOML file does not contain the 'server' key"
@@ -110,8 +116,8 @@ TOML is intended to be a close cousin of JSON this is a very practical
 approach.
 
 Other ways to pull data from a parsed TOML document will most likely
-exist; maybe the `lens` library can give great results in some cases.
-But I have no experience with them.
+exist; possible using the `lens` library as
+[documented here](https://github.com/cies/htoml/issues/8).
 
 
 ### Compatibility
@@ -119,8 +125,8 @@ But I have no experience with them.
 Currently we are testing against several versions of GHC with
 [Travis CI](https://travis-ci.org/cies/htoml) as defined in the `env` section of our
 [`.travis.yml`](https://github.com/cies/htoml/blob/master/.travis.yml).
-`lts-2` implies GHC 7.8.4, `lts-3` implies GHC 7.10.2, and `nightly` is
-build with a regularly updated version of GHC.
+`lts-2` implies GHC 7.8.4, `lts-3` implies GHC 7.10.2, `lts-4`/`lts-5`
+imply GHC 7.10.3, and `nightly` is build with a regularly updated version of GHC.
 
 
 ### Version contraints of `htoml`'s dependencies
@@ -176,7 +182,6 @@ much appreciated.
 
 * Release a stable 1.0 release and submit it to [Stackage](http://stackage.org)
 * More documentation
-* Make all tests pass (currently some more obscure corner cases don't pass)
 * Add property tests with QuickCheck (the internet says it's possible for parsers)
 * Extensively test error cases
 * Try using `Vector` instead of `List` (measure performance increase with the benchmarks)
@@ -187,6 +192,9 @@ much appreciated.
 
 Originally this project started off by improving the `toml` package by
 Spiros Eliopoulos.
+
+[HuwCampbell](https://github.com/HuwCampbell) helped a lot by making tests
+pass and implementing "explicitness tracking" in Parsec's parser state.
 
 
 ### Copyright and licensing
