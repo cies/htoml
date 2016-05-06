@@ -15,6 +15,7 @@ module Text.Toml.Types
 import           Control.Monad       (when)
 import           Text.Parsec
 import           Data.Aeson.Types
+import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as M
 import           Data.Int            (Int64)
 import           Data.List           (intersect)
@@ -24,25 +25,32 @@ import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
 import           Data.Time.Format    ()
+import           Data.Vector         (Vector)
 import qualified Data.Vector         as V
 
 
--- | The 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
-type Table = M.HashMap Text Node
+-- | The TOML 'Table' is a mapping ('HashMap') of 'Text' keys to 'Node' values.
+type Table = HashMap Text Node
 
 -- | Contruct an empty 'Table'.
 emptyTable :: Table
 emptyTable = M.empty
 
--- | A 'Node' may contain any type of value that can put in a 'VArray'.
-data Node = VTable    Table
-          | VTArray   [Table]
+-- | An array of 'Table's, implemented using a 'Vector'.
+type VTArray = Vector Table
+
+-- | A \"value\" array that may contain zero or more 'Node's, implemented using a 'Vector'.
+type VArray = Vector Node
+
+-- | A 'Node' may contain any type of value that may be put in a 'VArray'.
+data Node = VTable    !Table
+          | VTArray   !VTArray
           | VString   !Text
           | VInteger  !Int64
           | VFloat    !Double
           | VBoolean  !Bool
           | VDatetime !UTCTime
-          | VArray    [Node]
+          | VArray    !VArray
   deriving (Eq, Show)
 
 -- | To mark whether or not a 'Table' has been explicitly defined.
@@ -74,7 +82,7 @@ insert ex ([name], node) ttbl =
                                 return $ M.insert name (VTable r) ttbl
           _ -> commonInsertError node [name]
       Just (VTArray a) -> case node of
-          (VTArray na) -> return $ M.insert name (VTArray $ a ++ na) ttbl
+          (VTArray na) -> return $ M.insert name (VTArray $ a V.++ na) ttbl
           _ -> commonInsertError node [name]
       Just _ -> commonInsertError node [name]
 insert ex (fullName@(name:ns), node) ttbl =
@@ -88,11 +96,11 @@ insert ex (fullName@(name:ns), node) ttbl =
           r <- insert Implicit (ns, node) t
           when (isExplicit ex) $ updateExStateOrError fullName node
           return $ M.insert name (VTable r) ttbl
-      Just (VTArray []) ->
-          parserFail "FATAL: Call to 'insert' found impossibly empty VArray."
-      Just (VTArray a) -> do
-          r <- insert Implicit (ns, node) (last a)
-          return $ M.insert name (VTArray $ (init a) ++ [r]) ttbl
+      Just (VTArray a) ->
+          if V.null a
+          then parserFail "FATAL: Call to 'insert' found impossibly empty VArray."
+          else do r <- insert Implicit (ns, node) (V.last a)
+                  return $ M.insert name (VTArray $ (V.init a) `V.snoc` r) ttbl
       Just _ -> commonInsertError node fullName
 
 
@@ -173,12 +181,10 @@ instance ToJSON Node where
 class ToBsJSON a where
   toBsJSON :: a -> Value
 
-
--- | Provide a 'toBsJSON' instance to the 'NTArray'.
-instance (ToBsJSON a) => ToBsJSON [a] where
-  toBsJSON = Array . V.fromList . map toBsJSON
+-- | Provide a 'toBsJSON' instance to the 'VTArray'.
+instance (ToBsJSON a) => ToBsJSON (Vector a) where
+  toBsJSON = Array . V.map toBsJSON
   {-# INLINE toBsJSON #-}
-
 
 -- | Provide a 'toBsJSON' instance to the 'NTable'.
 instance (ToBsJSON v) => ToBsJSON (M.HashMap Text v) where
