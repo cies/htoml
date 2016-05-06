@@ -1,5 +1,5 @@
 name:                     htoml
-version:                  0.2.0.0
+version:                  0.2.0.1
 synopsis:                 Parser for TOML files
 description:              TOML is an obvious and minimal format for config files.
                           .
@@ -63,12 +63,12 @@ executable tests
                         , aeson
                         , text
                         , time
+                        , htoml  -- from here non-lib deps
                         , bytestring             >= 0.9
                         , file-embed             >= 0.0.10
                         , tasty                  >= 0.10
                         , tasty-hspec            >= 0.2
                         , tasty-hunit            >= 0.9
-                        , htoml
 
 test-suite Tests
   hs-source-dirs:         test
@@ -77,23 +77,21 @@ test-suite Tests
   other-modules:          BurntSushi
                         , Text.Toml.Parser.Spec
   type:                   exitcode-stdio-1.0
-  default-language:        Haskell2010
+  default-language:       Haskell2010
   build-depends:          base
-                        , aeson
                         , parsec
                         , containers
-                        , bytestring
-                        , file-embed
                         , unordered-containers
                         , vector
                         , aeson
                         , text
                         , time
-                        , htoml
+                        , htoml  -- from here non-lib deps
+                        , bytestring
+                        , file-embed
                         , tasty
                         , tasty-hspec
                         , tasty-hunit
-                        , aeson
 
 benchmark benchmarks
   hs-source-dirs:         benchmarks .
@@ -109,5 +107,5 @@ benchmark benchmarks
                         , aeson
                         , text
                         , time
-                        , htoml
+                        , htoml  -- from here non-lib deps
                         , criterion
