@@ -63,7 +63,8 @@ executable tests
                         , aeson
                         , text
                         , time
-                        , htoml  -- from here non-lib deps
+                          -- from here non-lib deps
+                        , htoml
                         , bytestring             >= 0.9
                         , file-embed             >= 0.0.10
                         , tasty                  >= 0.10
@@ -86,7 +87,8 @@ test-suite Tests
                         , aeson
                         , text
                         , time
-                        , htoml  -- from here non-lib deps
+			  -- from here non-lib deps
+                        , htoml
                         , bytestring
                         , file-embed
                         , tasty
@@ -107,5 +109,6 @@ benchmark benchmarks
                         , aeson
                         , text
                         , time
-                        , htoml  -- from here non-lib deps
+			  -- from here non-lib deps
+                        , htoml
                         , criterion
