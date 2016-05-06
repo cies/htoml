@@ -4,6 +4,10 @@ Change log
 #### dev
 * ...
 
+### 0.2.0.1
+* Expose `ToJSON` implementation
+* Remove unused .cabal dependency (thanks @tmcgilchrist)
+
 #### 0.2.0.0
 * Compatible with TOML 0.4.0
 * Improve test suite (all test now pass -- thanks @HuwCampbell)
