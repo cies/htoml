@@ -1,13 +1,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Toml.Types (
-    Table
+module Text.Toml.Types
+  ( Table
   , emptyTable
   , Node (..)
   , Explicitness (..)
   , isExplicit
   , insert
+  , ToJSON (..)
   , ToBsJSON (..)
   ) where
 
@@ -47,6 +48,7 @@ data Node = VTable    Table
 -- | To mark whether or not a 'Table' has been explicitly defined.
 -- See: https://github.com/toml-lang/toml/issues/376
 data Explicitness = Explicit | Implicit
+  deriving (Eq, Show)
 
 -- | Convenience function to get a boolean value.
 isExplicit :: Explicitness -> Bool
