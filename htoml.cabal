@@ -65,7 +65,6 @@ executable tests
                         , time
                         , bytestring             >= 0.9
                         , file-embed             >= 0.0.10
-                        , Cabal                  >= 1.16.0
                         , tasty                  >= 0.10
                         , tasty-hspec            >= 0.2
                         , tasty-hunit            >= 0.9
@@ -90,7 +89,6 @@ test-suite Tests
                         , aeson
                         , text
                         , time
-                        , Cabal
                         , htoml
                         , tasty
                         , tasty-hspec
@@ -111,6 +109,5 @@ benchmark benchmarks
                         , aeson
                         , text
                         , time
-                        , Cabal
                         , htoml
                         , criterion
