@@ -4,6 +4,8 @@
 module Text.Toml.Types
   ( Table
   , emptyTable
+  , VTArray
+  , VArray
   , Node (..)
   , Explicitness (..)
   , isExplicit
