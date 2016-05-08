@@ -55,19 +55,31 @@ tomlDoc = do
 
 -- | Parses a table of key-value pairs.
 table :: Parser Table
-table = (try (many (assignment <* skipBlanks)) <|> (try skipBlanks $> [])) >>=
-  sequenceA . fromListWithKey collision . (map . second) pure
-  where collision k _ _ = fail $ "Cannot redefine key " ++ unpack k
+table = do
+    pairs <- try (many (assignment <* skipBlanks)) <|> (try skipBlanks >> return [])
+    case maybeDupe (map fst pairs) of
+      Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
+      Nothing -> return $ M.fromList pairs
 
 -- | Parses an inline table of key-value pairs.
 inlineTable :: Parser Node
-inlineTable = (between (char '{') (char '}') . between skipSpaces skipSpaces) separatedValues >>=
-  fmap VTable . sequenceA . fromListWithKey collision . (map . second) pure
-  where 
-    collision k _ _ = fail $ "Cannot redefine key " ++ unpack k
+inlineTable = do
+    pairs <- between (char '{') (char '}') (skipSpaces *> separatedValues <* skipSpaces)
+    case maybeDupe (map fst pairs) of
+      Just k  -> fail $ "Cannot redefine key " ++ (unpack k)
+      Nothing -> return $ VTable $ M.fromList pairs
+  where
     skipSpaces      = many (satisfy isSpc)
-    separatedValues = sepBy (between skipSpaces skipSpaces assignment) comma
-    comma           = between skipSpaces skipSpaces $ char ','
+    separatedValues = sepBy (skipSpaces *> assignment <* skipSpaces) comma
+    comma           = skipSpaces >> char ',' >> skipSpaces
+
+-- | Find dupes, if any.
+maybeDupe :: Ord a => [a] -> Maybe a
+maybeDupe xx = dup xx S.empty
+  where
+    dup []     _ = Nothing
+    dup (x:xs) s = if S.member x s then Just x else dup xs (S.insert x s)
+
 
 -- | Parses a 'Table' or 'TableArray' with its header.
 -- The resulting tuple has the header's value in the first position, and the
@@ -203,7 +215,7 @@ float = VFloat <$> do
     e <- try (satisfy (\c -> c == 'e' || c == 'E') *> intStr) <|> return "0"
     return . read . L.concat $ [n, ".", d, "e", e]
   where
-    sign    = try (string "-") <|> (try (char '+') $> "") <|> return ""
+    sign    = try (string "-") <|> (try (char '+') >> return "") <|> return ""
     uintStr = (:) <$> digit <*> many (optional (char '_') *> digit)
     intStr  = do s <- sign
                  u <- uintStr
@@ -267,8 +279,8 @@ signed p =  try (negate <$> (char '-' *> p))
 skipBlanks :: Parser ()
 skipBlanks = skipMany blank
   where
-    blank   = try ((many1 $ satisfy isSpc) $> ()) <|> try comment <|> try eol
-    comment = char '#' >> (many $ satisfy (/= '\n')) $> ()
+    blank   = try ((many1 $ satisfy isSpc) >> return ()) <|> try comment <|> try eol
+    comment = char '#' >> (many $ satisfy (/= '\n')) >> return ()
 
 
 -- | Results in 'True' for whitespace chars, tab or space, according to spec.
@@ -278,4 +290,4 @@ isSpc c = c == ' ' || c == '\t'
 
 -- | Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n' or 0x0D a.k.a. '\r'.
 eol :: Parser ()
-eol = (string "\n" <|> string "\r\n") $> ()
+eol = (string "\n" <|> string "\r\n") >> return ()
