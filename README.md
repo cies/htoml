@@ -28,8 +28,8 @@ Compatibility between `htoml` version and TOML (as proven by
 [BurntSushi's language agnostic TOML test suite]())
 is as follows:
 
-* `htoml >= 1.0.0.0` =>
-  [TOML v0.4.0](https://github.com/toml-lang/toml/releases/tag/v0.4.0)
+* [TOML v0.4.0](https://github.com/toml-lang/toml/releases/tag/v0.4.0)
+is implemented by  `htoml >= 1.0.0.0`
 * *(currently only one item in this mapping, more will follow)*
 
 
@@ -74,37 +74,42 @@ automatically with:
 
     stack solver --update-config
 
-We can now start exploring `htoml` from a GHCi REPL.
+We can now start exploring `htoml` from a GHCi REPL. For instance
+by reading a `.toml` file from the banchmarks, with:
 
-``haskell
+```haskell
 txt <- readFile "benchmarks/example.toml"
 let r = parseTomlDoc "" txt
 r
 ```
 
-Prints:
+..,which prints:
 
     Right (fromList [("database",VTable (fromList [("enabled",VBoolean True),("po [...]
+
+Then converting it to [Aeason's JSON](https://hackage.haskell.org/package/aeson), with:
 
 ```haskell
 let Right toml = r
 toJSON toml
 ```
 
-Prints:
+..which prints:
 
     Object (fromList [("database",Object (fromList [("enabled",Bool True),("po [...]
+
+Finally here an parse error produced with:
 
 ```haskell
 let Left err = parseTomlDoc "" "== invalid toml =="
 err
 ```
 
-Errors out with:
+...which errors out showing:
 
     (line 1, column 1):
     unexpected '='
-    expecting "#", "\n", "\r\n", letter or digit, "_", "-", "\"", "'", "[" or end of inputr
+    expecting "#", "\n", "\r\n", letter or digit, "_", "-", "\"", "'", "[" or end of input
 
 **Note:** Some of the above outputs are truncated, indicated by `[...]`.
 
