@@ -83,7 +83,7 @@ let r = parseTomlDoc "" txt
 r
 ```
 
-..,which prints:
+...which prints:
 
     Right (fromList [("database",VTable (fromList [("enabled",VBoolean True),("po [...]
 
@@ -94,7 +94,7 @@ let Right toml = r
 toJSON toml
 ```
 
-..which prints:
+...which prints:
 
     Object (fromList [("database",Object (fromList [("enabled",Bool True),("po [...]
 
