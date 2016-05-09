@@ -5,8 +5,8 @@ htoml
 [![Latest version on Hackage](https://img.shields.io/hackage/v/htoml.svg)](https://hackage.haskell.org/package/html)
 [![Dependencies of latest version on Hackage](https://img.shields.io/hackage-deps/v/htoml.svg)](https://hackage.haskell.org/package/html)
 
-[![htoml on Stackage LTS 2](http://stackage.org/package/htoml/badge/lts-2)](http://stackage.org/lts-2/package/htoml)
-[![htoml on Stackage LTS 3](http://stackage.org/package/htoml/badge/lts-3)](http://stackage.org/lts-3/package/htoml)
+[![htoml on Stackage LTS 4](http://stackage.org/package/htoml/badge/lts-4)](http://stackage.org/lts-4/package/htoml)
+[![htoml on Stackage LTS 5](http://stackage.org/package/htoml/badge/lts-5)](http://stackage.org/lts-5/package/htoml)
 [![htoml on Stackage Nightly](http://stackage.org/package/htoml/badge/nightly)](http://stackage.org/nightly/package/htoml)
 
 
@@ -23,11 +23,20 @@ the purpose of configuration files prupose while INI is underspecified.
 TOML is to configuration files, like what Markdown is for rich-text.
 
 This library aims to be compatible with the latest version of the
-[TOML spec](https://github.com/mojombo/toml), currently that is
-[v0.4.0](https://github.com/toml-lang/toml/releases/tag/v0.4.0).
+[TOML spec](https://github.com/mojombo/toml).
+Compatibility between `htoml` version and TOML (as proven by
+[BurntSushi's language agnostic TOML test suite]())
+is as follows:
 
-The documentation for this package may (or may not) be found on
-[Hackage](https://hackage.haskell.org/package/htoml).
+* `htoml >= 1.0.0.0` =>
+  [TOML v0.4.0](https://github.com/toml-lang/toml/releases/tag/v0.4.0)
+* *(currently only one item in this mapping, more will follow)*
+
+
+### Documentation
+
+Apart from this README, documentation for this package may
+(or may not) be found on [Hackage](https://hackage.haskell.org/package/htoml).
 
 
 ### Quick start
@@ -67,22 +76,37 @@ automatically with:
 
 We can now start exploring `htoml` from a GHCi REPL.
 
-    > txt <- readFile "benchmarks/example.toml"
-    > let r = parseTomlDoc "" txt
-    > r
+``haskell
+txt <- readFile "benchmarks/example.toml"
+let r = parseTomlDoc "" txt
+r
+```
+
+Prints:
+
     Right (fromList [("database",VTable (fromList [("enabled",VBoolean True),("po [...]
 
-    > let Right toml = r
-    > toJSON toml
+```haskell
+let Right toml = r
+toJSON toml
+```
+
+Prints:
+
     Object (fromList [("database",Object (fromList [("enabled",Bool True),("po [...]
 
-    > let Left err = parseTomlDoc "" "== invalid toml =="
-    > err
+```haskell
+let Left err = parseTomlDoc "" "== invalid toml =="
+err
+```
+
+Errors out with:
+
     (line 1, column 1):
     unexpected '='
     expecting "#", "\n", "\r\n", letter or digit, "_", "-", "\"", "'", "[" or end of inputr
 
-Notice that some outputs are truncated, indicated by `[...]`.
+**Note:** Some of the above outputs are truncated, indicated by `[...]`.
 
 
 ### How to pull data from a TOML file after parsing it
@@ -134,10 +158,7 @@ imply GHC 7.10.3, and `nightly` is build with a regularly updated version of GHC
 If you encounter any problems because `htoml`'s dependecies are
 constrained either too much or too little, please
 [file a issue](https://github.com/cies/htoml/issues) for that.
-
-I will try to have `htoml` included in [Stackage](http://stackage.org)
-as soon as it is reviewed by the community. Stackage provides a very
-attractive solution to most (dependency) version conflicts.
+Or off even better submit a PR.
 
 
 ### Tests and benchmarks
@@ -176,19 +197,21 @@ much appreciated.
 * Fails on mix-type arrays (as per spec)
 * Comes with a benchmark suite to make performance gains/regressions measurable
 * Tries to be well documented (please raise an issue if you find documentation lacking)
-* Available on [Stackage](http://stackage.org) (nightlies for far -- 10 may 2016)
+* Available on [Stackage](http://stackage.org) (see top of this README for badges
+  indicating TOMLs *inclusion in Stackage status*)
 
 
 ### Todo
 
-* Once 1.0 is out, keep a compatibility chart showing which versions of htoml are
-  compatible with which versions of the TOML spec
-* More documentation
+* More documentation and start to use the proper Haddock idioms
 * Add property tests with QuickCheck (the internet says it's possible for parsers)
-* Extensively test error cases
+* Extensively test error cases (probably improving error reporting along the way)
 * See how lenses may (or may not) fit into this package, or an additional package
 * Consider moving to [one of the more modern parser combinators](https://www.reddit.com/r/haskell/comments/46u45o/what_is_the_current_state_of_parser_libraries_in)
   in Haskell (`megaparsec` maybe?) -- possibly wait until a clear winner shows
+
+Do you see todo that looks like fun thing to implement and you can spare the time?
+Please knoe that PRs are welcome :)
 
 
 ### Acknowledgements
