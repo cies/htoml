@@ -4,6 +4,9 @@ Change log
 #### dev
 * ...
 
+### 1.0.0.0
+* Use `Vector` over `List` internally, as per discussion in [issue 13](https://github.com/cies/htoml/issues/13)
+
 ### 0.2.0.1
 * Expose `ToJSON` implementation
 * Remove unused .cabal dependency (thanks @tmcgilchrist)
