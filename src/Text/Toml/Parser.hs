@@ -15,6 +15,7 @@ import qualified Data.HashMap.Strict as M
 import qualified Data.List           as L
 import qualified Data.Set            as S
 import           Data.Text           (Text, pack, unpack)
+import qualified Data.Vector         as V
 
 #if MIN_VERSION_time(1,5,0)
 import           Data.Time.Format    (defaultTimeLocale, iso8601DateFormat,
@@ -90,8 +91,8 @@ namedSection = do
     skipBlanks
     tbl <- table
     skipBlanks
-    return $ case eitherHdr of Left  ns -> (ns, VTable   tbl )
-                               Right ns -> (ns, VTArray [tbl])
+    return $ case eitherHdr of Left  ns -> (ns, VTable tbl )
+                               Right ns -> (ns, VTArray $ V.singleton tbl)
 
 
 -- | Parses a table header.
@@ -234,7 +235,8 @@ integer = VInteger <$> (signed $ read <$> uintStr)
 
 -- | Parses the elements of an array, while restricting them to a certain type.
 arrayOf :: Parser Node -> Parser Node
-arrayOf p = VArray <$> between (char '[') (char ']') (skipBlanks *> separatedValues)
+arrayOf p = (VArray . V.fromList) <$>
+                between (char '[') (char ']') (skipBlanks *> separatedValues)
   where
     separatedValues = sepEndBy (skipBlanks *> try p <* skipBlanks) comma <* skipBlanks
     comma           = skipBlanks >> char ',' >> skipBlanks

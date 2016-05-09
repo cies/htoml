@@ -8,8 +8,16 @@ import           Test.Tasty.Hspec
 import           Data.HashMap.Strict (fromList)
 import           Data.Time.Calendar  (Day (..))
 import           Data.Time.Clock     (UTCTime (..))
+import qualified Data.Vector         as V
 
 import           Text.Toml.Parser
+
+
+mkVTArray :: [Table] -> Node
+mkVTArray = VTArray . V.fromList
+
+mkVArray :: [Node] -> Node
+mkVArray  = VArray . V.fromList
 
 
 tomlParserSpec :: IO TestTree
@@ -69,34 +77,34 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
     it "should parse a simple empty table array" $
       testParser tomlDoc "[[a]]\n[[a]]" $
-        fromList [("a", VTArray [ fromList []
-                                , fromList [] ] )]
+        fromList [("a", mkVTArray [ fromList []
+                                  , fromList [] ] )]
 
     it "should parse a simple table array with content" $
       testParser tomlDoc "[[a]]\na1=1\n[[a]]\na2=2" $
-        fromList [("a", VTArray [ fromList [("a1", VInteger 1)]
-                                , fromList [("a2", VInteger 2)] ] )]
+        fromList [("a", mkVTArray [ fromList [("a1", VInteger 1)]
+                                  , fromList [("a2", VInteger 2)] ] )]
 
     it "should not allow a simple table array to be inserted into a non table array" $
       testParserFails tomlDoc "a = [1,2,3]\n[[a]]"
 
     it "should parse a simple empty nested table array" $
       testParser tomlDoc "[[a.b]]\n[[a.b]]" $
-        fromList [("a", VTable (fromList [("b", VTArray [ emptyTable
-                                                        , emptyTable ] )] ) )]
+        fromList [("a", VTable (fromList [("b", mkVTArray [ emptyTable
+                                                          , emptyTable ] )] ) ) ]
 
     it "should parse a simple non empty table array" $
       testParser tomlDoc "[[a.b]]\na1=1\n[[a.b]]\na2=2" $
-        fromList [("a", VTable (fromList [("b", VTArray [ fromList [("a1", VInteger 1)]
-                                                        , fromList [("a2", VInteger 2)]
-                                                        ] )] ) )]
+        fromList [("a", VTable (fromList [("b", mkVTArray [ fromList [("a1", VInteger 1)]
+                                                          , fromList [("a2", VInteger 2)]
+                                                          ] )] ) )]
 
     it "should parse redefined implicit table header" $
       testParserFails tomlDoc "[[a.b]]\n[[a]]"
 
     it "should parse redefinition by implicit table header" $
       testParser tomlDoc "[[a]]\n[[a.b]]" $
-        fromList [("a", VTArray [ fromList [("b", VTArray [ fromList [] ])] ] )]
+        fromList [("a", mkVTArray [ fromList [("b", mkVTArray [ fromList [] ])] ] )]
 
 
   describe "Parser.tomlDoc (mixed named tables and tables arrays)" $ do
@@ -112,26 +120,26 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
 
     it "should parse redefined implicit table header (array by table)" $
       testParser tomlDoc "[[a.b]]\n[a]" $
-        fromList [("a", VTable (fromList [("b", VTArray [ fromList [] ])] ) )]
+        fromList [("a", VTable (fromList [("b", mkVTArray [ fromList [] ])] ) )]
 
     it "should not parse redefined implicit table header (array by table), when keys collide" $
       testParserFails tomlDoc "[[a.b]]\n[a]\nb=1"
 
     it "should insert sub-key of regular table in most recently defined table array" $
       testParser tomlDoc "[[a]]\ni=0\n[[a]]\ni=1\n[a.b]" $
-        fromList [("a", VTArray [ fromList [ ("i", VInteger 0) ]
-                                , fromList [ ("b", VTable  $ fromList [] )
-                                           , ("i", VInteger 1) ]
-                                ] )]
+        fromList [("a", mkVTArray [ fromList [ ("i", VInteger 0) ]
+                                  , fromList [ ("b", VTable  $ fromList [] )
+                                             , ("i", VInteger 1) ]
+                                  ] )]
 
     it "should insert sub-key of table array" $
       testParser tomlDoc "[a]\n[[a.b]]" $
-        fromList [("a", VTable (fromList [("b", VTArray [fromList []])] ) )]
+        fromList [("a", VTable (fromList [("b", mkVTArray [fromList []])] ) )]
 
     it "should insert sub-key (with content) of table array" $
       testParser tomlDoc "[a]\nq=42\n[[a.b]]\ni=0" $
         fromList [("a", VTable (fromList [ ("q", VInteger 42),
-                                           ("b", VTArray [
+                                           ("b", mkVTArray [
                                                    fromList [("i", VInteger 0)]
                                                    ]) ]) )]
 
@@ -349,66 +357,66 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
   describe "Parser.tomlDoc arrays" $ do
 
     it "should parse an empty array" $
-      testParser array "[]" $ VArray []
+      testParser array "[]" $ mkVArray []
 
     it "should parse an empty array with whitespace" $
-      testParser array "[ ]" $ VArray []
+      testParser array "[ ]" $ mkVArray []
 
     it "should not parse an empty array with only a terminating comma" $
       testParserFails array "[,]"
 
     it "should parse an empty array of empty arrays" $
-      testParser array "[[],[]]" $ VArray [ VArray [], VArray [] ]
+      testParser array "[[],[]]" $ mkVArray [ mkVArray [], mkVArray [] ]
 
     it "should parse an empty array of empty arrays with whitespace" $
-      testParser array "[ \n[ ]\n ,\n [ \n ] ,\n ]" $ VArray [ VArray [], VArray [] ]
+      testParser array "[ \n[ ]\n ,\n [ \n ] ,\n ]" $ mkVArray [ mkVArray [], mkVArray [] ]
 
     it "should parse nested arrays" $
       testParser assignment "d = [ ['gamma', 'delta'], [1, 2] ]"
-              $ ("d", VArray [ VArray [ VString "gamma"
-                                      , VString "delta" ]
-                             , VArray [ VInteger 1
-                                      , VInteger 2 ] ])
+              $ ("d", mkVArray [ mkVArray [ VString "gamma"
+                                          , VString "delta" ]
+                               , mkVArray [ VInteger 1
+                                          , VInteger 2 ] ])
 
     it "should allow linebreaks in an array" $
       testParser assignment "hosts = [\n'alpha',\n'omega'\n]"
-        $ ("hosts", VArray [VString "alpha", VString "omega"])
+        $ ("hosts", mkVArray [VString "alpha", VString "omega"])
 
     it "should allow some linebreaks in an array" $
       testParser assignment "hosts = ['alpha' ,\n'omega']"
-        $ ("hosts", VArray [VString "alpha", VString "omega"])
+        $ ("hosts", mkVArray [VString "alpha", VString "omega"])
 
     it "should allow linebreaks in an array, with comments" $
       testParser assignment "hosts = [\n\
                             \'alpha',  # the first\n\
                             \'omega'   # the last\n\
                             \]"
-        $ ("hosts", VArray [VString "alpha", VString "omega"])
+        $ ("hosts", mkVArray [VString "alpha", VString "omega"])
 
     it "should allow linebreaks in an array, with comments, and terminating comma" $
       testParser assignment "hosts = [\n\
                             \'alpha',  # the first\n\
                             \'omega',  # the last\n\
                             \]"
-        $ ("hosts", VArray [VString "alpha", VString "omega"])
+        $ ("hosts", mkVArray [VString "alpha", VString "omega"])
 
     it "inside an array, all element should be of the same type" $
       testParserFails array "[1, 2.0]"
 
     it "inside an array of arrays, this inner arrays may contain values of different types" $
       testParser array "[[1], [2.0], ['a']]" $
-        VArray [ VArray [VInteger 1], VArray [VFloat 2.0], VArray [VString "a"] ]
+        mkVArray [ mkVArray [VInteger 1], mkVArray [VFloat 2.0], mkVArray [VString "a"] ]
 
     it "all string variants are of the same type of the same type" $
       testParser assignment "data = [\"a\", \"\"\"b\"\"\", 'c', '''d''']" $
-                            ("data", VArray [ VString "a", VString "b",
-                                              VString "c", VString "d" ])
+                            ("data", mkVArray [ VString "a", VString "b",
+                                                VString "c", VString "d" ])
 
     it "should parse terminating commas in arrays" $
-      testParser array "[1, 2, ]" $ VArray [ VInteger 1, VInteger 2 ]
+      testParser array "[1, 2, ]" $ mkVArray [ VInteger 1, VInteger 2 ]
 
     it "should parse terminating commas in arrays(2)" $
-      testParser array "[1,2,]" $ VArray [ VInteger 1, VInteger 2 ]
+      testParser array "[1,2,]" $ mkVArray [ VInteger 1, VInteger 2 ]
 
   describe "Parser.tomlDoc inline tables" $ do
 
@@ -416,7 +424,8 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
       testParser inlineTable "{}" $ VTable (fromList [])
 
     it "should parse simple inline tables" $
-      testParser inlineTable "{ a = 8 , b = \"things\" }" $ VTable (fromList [ ("a" , VInteger 8) , ("b", VString "things") ])
+      testParser inlineTable "{ a = 8 , b = \"things\" }" $
+        VTable (fromList [ ("a" , VInteger 8) , ("b", VString "things") ])
 
     it "should not parse simple inline tables with newline " $
       testParserFails inlineTable "{ a = 8 , \n b = \"things\" }"
