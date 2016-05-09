@@ -4,6 +4,9 @@ Change log
 #### dev
 * ...
 
+### 1.0.0.1
+* Improve docs
+
 ### 1.0.0.0
 * Use `Vector` over `List` internally, as per discussion in [issue 13](https://github.com/cies/htoml/issues/13)
 
