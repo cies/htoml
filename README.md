@@ -74,8 +74,12 @@ automatically with:
 
     stack solver --update-config
 
-We can now start exploring `htoml` from a GHCi REPL. For instance
-by reading a `.toml` file from the banchmarks, with:
+We can now start exploring `htoml` from a GHCi REPL. From the
+root of this repository run:
+
+    stack ghci
+
+Now read a `.toml` file from the benchmark suite, with:
 
 ```haskell
 txt <- readFile "benchmarks/example.toml"
@@ -87,7 +91,7 @@ r
 
     Right (fromList [("database",VTable (fromList [("enabled",VBoolean True),("po [...]
 
-Then converting it to [Aeason's JSON](https://hackage.haskell.org/package/aeson), with:
+Then convert it to [Aeson](https://hackage.haskell.org/package/aeson) (JSON), with:
 
 ```haskell
 let Right toml = r
@@ -98,14 +102,14 @@ toJSON toml
 
     Object (fromList [("database",Object (fromList [("enabled",Bool True),("po [...]
 
-Finally here an parse error produced with:
+Finally trigger a parse error, with:
 
 ```haskell
 let Left err = parseTomlDoc "" "== invalid toml =="
 err
 ```
 
-...which errors out showing:
+...it errors out (as it should), showing:
 
     (line 1, column 1):
     unexpected '='
