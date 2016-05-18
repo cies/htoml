@@ -2,8 +2,8 @@ htoml
 =====
 
 [![Build Status](https://travis-ci.org/cies/htoml.svg?branch=master)](https://travis-ci.org/cies/htoml)
-[![Latest version on Hackage](https://img.shields.io/hackage/v/htoml.svg)](https://hackage.haskell.org/package/html)
-[![Dependencies of latest version on Hackage](https://img.shields.io/hackage-deps/v/htoml.svg)](https://hackage.haskell.org/package/html)
+[![Latest version on Hackage](https://img.shields.io/hackage/v/htoml.svg)](https://hackage.haskell.org/package/htoml)
+[![Dependencies of latest version on Hackage](https://img.shields.io/hackage-deps/v/htoml.svg)](https://hackage.haskell.org/package/htoml)
 
 [![htoml on Stackage LTS 4](http://stackage.org/package/htoml/badge/lts-4)](http://stackage.org/lts-4/package/htoml)
 [![htoml on Stackage LTS 5](http://stackage.org/package/htoml/badge/lts-5)](http://stackage.org/lts-5/package/htoml)
