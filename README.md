@@ -5,8 +5,8 @@ htoml
 [![Latest version on Hackage](https://img.shields.io/hackage/v/htoml.svg)](https://hackage.haskell.org/package/htoml)
 [![Dependencies of latest version on Hackage](https://img.shields.io/hackage-deps/v/htoml.svg)](https://hackage.haskell.org/package/htoml)
 
-[![htoml on Stackage LTS 4](http://stackage.org/package/htoml/badge/lts-4)](http://stackage.org/lts-4/package/htoml)
 [![htoml on Stackage LTS 5](http://stackage.org/package/htoml/badge/lts-5)](http://stackage.org/lts-5/package/htoml)
+[![htoml on Stackage LTS 6](http://stackage.org/package/htoml/badge/lts-6)](http://stackage.org/lts-6/package/htoml)
 [![htoml on Stackage Nightly](http://stackage.org/package/htoml/badge/nightly)](http://stackage.org/nightly/package/htoml)
 
 
