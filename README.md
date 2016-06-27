@@ -25,7 +25,7 @@ TOML is to configuration files, like what Markdown is for rich-text.
 This library aims to be compatible with the latest version of the
 [TOML spec](https://github.com/mojombo/toml).
 Compatibility between `htoml` version and TOML (as proven by
-[BurntSushi's language agnostic TOML test suite]())
+[BurntSushi's language agnostic TOML test suite](https://github.com/BurntSushi/toml-test))
 is as follows:
 
 * [TOML v0.4.0](https://github.com/toml-lang/toml/releases/tag/v0.4.0)
