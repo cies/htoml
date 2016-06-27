@@ -73,7 +73,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
       testParserFails tomlDoc "[a]\nb=1\n[a.b]"
 
 
-  describe "Parser.tomlDoc (tables arrays)" $ do
+  describe "Parser.tomlDoc (table arrays)" $ do
 
     it "should parse a simple empty table array" $
       testParser tomlDoc "[[a]]\n[[a]]" $
@@ -107,7 +107,7 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
         fromList [("a", mkVTArray [ fromList [("b", mkVTArray [ fromList [] ])] ] )]
 
 
-  describe "Parser.tomlDoc (mixed named tables and tables arrays)" $ do
+  describe "Parser.tomlDoc (mixed named tables and table arrays)" $ do
 
     it "should not parse redefinition of key by table header (table array by table)" $
       testParserFails tomlDoc "[[a]]\n[a]"
@@ -142,6 +142,29 @@ tomlParserSpec = testSpec "Parser Hspec suite" $ do
                                            ("b", mkVTArray [
                                                    fromList [("i", VInteger 0)]
                                                    ]) ]) )]
+
+    it "should parse a table array with nested named table of same name" $
+      testParser tomlDoc ("[[fruit]]\n\
+                          \  [fruit.physical]\n\
+                          \    color = \"red\"\n\
+                          \[[fruit]]\n\
+                          \  [fruit.physical]\n\
+                          \    color = \"yellow\"") $
+      fromList [("fruit", mkVTArray [ fromList [ ("physical"
+                                               , VTable (fromList [("color",VString "red")])) ]
+                                    , fromList [ ("physical"
+                                               , VTable (fromList [("color",VString "yellow")])) ]
+                                    ] )]
+
+    it "should parse a table array with deep-nested named table of same name" $
+      testParser tomlDoc ("[[fruit.n]]\n\
+                          \  [fruit.n.physical]\n\
+                          \    color = \"red\"\n\
+                          \[[fruit.n]]\n\
+                          \  [fruit.n.physical]\n\
+                          \    color = \"yellow\"") $
+      fromList [] -- currently fails to parse
+
 
   describe "Parser.headerValue" $ do
 
