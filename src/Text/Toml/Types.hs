@@ -145,12 +145,12 @@ nameInsertError ns name = parserFail . T.unpack $ T.concat
 -- | Table redefinition error.
 tableClashError :: [Text] -> Parsec Text (Set [Text]) a
 tableClashError name = parserFail . T.unpack $ T.concat
-    [ "Cannot redefine table ('", T.intercalate ", " name , "'." ]
+    [ "Cannot redefine table named: '", T.intercalate "." name, "'." ]
 
 -- | Common redefinition error.
 commonInsertError :: Node -> [Text] -> Parsec Text (Set [Text]) a
 commonInsertError what name = parserFail . concat $
-    [ "Cannot insert ", w, " '", n, "' as key already exists." ]
+    [ "Cannot insert ", w, " as '", n, "' since key already exists." ]
   where
     n = T.unpack $ T.intercalate "." name
     w = case what of (VTable _) -> "tables"
