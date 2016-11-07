@@ -1,5 +1,5 @@
 name:                     htoml
-version:                  1.0.0.2
+version:                  1.0.0.3
 synopsis:                 Parser for TOML files
 description:              TOML is an obvious and minimal format for config files.
                           .
