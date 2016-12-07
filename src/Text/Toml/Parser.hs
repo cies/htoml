@@ -109,9 +109,12 @@ tableArrayHeader = between (twoChar '[') (twoChar ']') headerValue
 
 -- | Parses the value of any header (names separated by dots), into a list of 'Text'.
 headerValue :: Parser [Text]
-headerValue = ((pack <$> many1 keyChar) <|> anyStr') `sepBy1` (char '.')
+headerValue = (pack <$> (str <|> many1 keyChar)) `sepBy1` (char '.')
   where
     keyChar = alphaNum <|> char '_' <|> char '-'
+    str = between dQuote dQuote (many strChar)
+    strChar = try escSeq <|> try (satisfy (\c -> c /= '"' && c /= '\\'))
+    dQuote  = char '\"'
 
 -- | Parses a key-value assignment.
 assignment :: Parser (Text, Node)
