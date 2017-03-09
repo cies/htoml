@@ -24,7 +24,7 @@ import qualified Data.Text           as T
 
 ppNode :: Node -> Doc
 ppNode n = case n of
-    (VTable v)    -> ppTable $ M.toList v
+    (VTable v)    -> ppTable v
     (VTArray v)   -> ppTArray v
     (VString v)   -> ppTomlString v
     (VInteger v)  -> ppInteger $ fromIntegral v
@@ -59,23 +59,26 @@ ppBoolean False = text "false"
 ppArray :: V.Vector Node -> Doc
 ppArray va = brackets $ fsep $ punctuate comma $ map ppNode (V.toList va)
 
-ppTable :: [(T.Text, Node)] -> Doc
-ppTable ((t, VTable v) : xs) =
-    brackets (text $ T.unpack t) $$ vcat (tableToList (M.toList v)) $$ ppTable xs
-ppTable tb = vcat $ tableToList tb
-
-{-tableToList :: [(Text,Node)] -> Doc
-tableToList (x:xs) = (title x) $$ (vcat $ (Prelude.map (fsep . f) xs))
-    where f (x,y) = punctuate (space <> equals) [text $ T.unpack x,ppNode y]
-          title (x,_) = brackets $ text $ T.unpack x-}
+ppTable :: Table -> Doc
+ppTable tb = findTTitle (M.toList tb) [text ""]
+    where
+        findTTitle []                   ti = brackets $ hcat ti
+        findTTitle [(t, VTable v)]      ti = findTTitle (M.toList v) $ ti ++ [text $ T.unpack t]
+        findTTitle ((t, VTable v) : xs) ti = (findTTitle (M.toList v) $ ti ++ [text $ T.unpack t]) $$ findTTitle xs ti
+        findTTitle v                    ti = (brackets $ hcat $ punctuate (char '.') (tail ti)) $$ vcat (tableToList v)
 
 tableToList :: [(T.Text, Node)] -> [Doc]
 tableToList = map (fsep . f)
     where f (x, y) = punctuate (space <> equals) [text $ T.unpack x, ppNode y]
 
+ppTArrayWithName :: [(T.Text, Node)] -> Doc -> Doc
+ppTArrayWithName ((t, VTable _) : xs) name = ppTArrayWithName xs $ name <+> text (T.unpack t)
+ppTArrayWithName l                    name = brackets name $$ vcat (tableToList l)
+
 -- Need fix
 ppTArray :: V.Vector Table -> Doc
-ppTArray vt = brackets $ fsep $ punctuate comma $ map (ppTable . M.toList) (V.toList vt)
+ppTArray vt = brackets $ fsep $ punctuate comma $ map ppTable (V.toList vt)
+
 
 
 
