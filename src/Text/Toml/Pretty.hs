@@ -24,7 +24,7 @@ import qualified Data.Text           as T
 
 ppNode :: Node -> Doc
 ppNode n = case n of
-    (VTable v)    -> ppTable v
+    (VTable v)    -> ppTable $ M.toList v
     (VTArray v)   -> ppTArray v
     (VString v)   -> ppTomlString v
     (VInteger v)  -> ppInteger $ fromIntegral v
@@ -59,8 +59,10 @@ ppBoolean False = text "false"
 ppArray :: V.Vector Node -> Doc
 ppArray va = brackets $ fsep $ punctuate comma $ map ppNode (V.toList va)
 
-ppTable :: Table -> Doc
-ppTable t = vcat $ tableToList $ M.toList t
+ppTable :: [(T.Text, Node)] -> Doc
+ppTable ((t, VTable v) : xs) =
+    brackets (text $ T.unpack t) $$ vcat (tableToList (M.toList v)) $$ ppTable xs
+ppTable tb = vcat $ tableToList tb
 
 {-tableToList :: [(Text,Node)] -> Doc
 tableToList (x:xs) = (title x) $$ (vcat $ (Prelude.map (fsep . f) xs))
@@ -69,7 +71,13 @@ tableToList (x:xs) = (title x) $$ (vcat $ (Prelude.map (fsep . f) xs))
 
 tableToList :: [(T.Text, Node)] -> [Doc]
 tableToList = map (fsep . f)
-    where f (x, y) = punctuate (space <> equals) [text $ T.unpack x,ppNode y]
+    where f (x, y) = punctuate (space <> equals) [text $ T.unpack x, ppNode y]
 
+-- Need fix
 ppTArray :: V.Vector Table -> Doc
-ppTArray vt = brackets $ fsep $ punctuate comma $ map ppTable (V.toList vt)
+ppTArray vt = brackets $ fsep $ punctuate comma $ map (ppTable . M.toList) (V.toList vt)
+
+
+
+
+

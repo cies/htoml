@@ -5,7 +5,7 @@ import           Data.Set         (empty)
 import           Text.Parsec
 
 import           Text.Toml.Parser
-import           Text.Toml.Pretty ()
+import           Text.Toml.Pretty hiding (empty)
 
 
 -- | Parse a 'Text' that results in 'Either' a 'String'
