@@ -59,7 +59,8 @@ ppArray :: V.Vector Node -> Doc
 ppArray va = brackets $ fsep $ punctuate comma $ map ppNode (V.toList va)
 
 ppTable :: Table -> Doc
-ppTable tb = findTTitle (M.toList tb) True [text ""]
+ppTable tb | M.null tb = empty
+           | otherwise = findTTitle (M.toList tb) True [text ""]
 
 findTTitle :: [(T.Text, Node)] -> Bool -> [Doc] -> Doc
 findTTitle []                    True     ti = brackets $ hcat ti
