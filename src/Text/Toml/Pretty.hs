@@ -64,8 +64,10 @@ ppTable tb = findTTitle (M.toList tb) True [text ""]
 findTTitle :: [(T.Text, Node)] -> Bool -> [Doc] -> Doc
 findTTitle []                   b ti = brackets $ hcat ti
 -- findTTitle ((t, VTArray v) : xs) ti = brackets (brackets $ text $ T.unpack t) $$ (hcat $ map (\x -> findTTitle x [text $ T.unpack t]) (map M.toList $ V.toList v)) $$ findTTitle xs [text $ T.unpack t]
-findTTitle ((t, VTArray v) : xs) True ti = ppTArray v t -- $$ findTTitle xs True ti
-findTTitle ((t, VTArray v) : xs) False ti = ppTArray v (T.pack ((render (hcat ti)) ++ "." ++ (T.unpack t))) -- $$ findTTitle xs False ti
+findTTitle ((t, VTArray v) : []) True ti = ppTArray v t
+findTTitle ((t, VTArray v) : xs) True ti = ppTArray v t $$ findTTitle xs True ti
+findTTitle ((t, VTArray v) : []) False ti = ppTArray v (T.pack ((render (hcat ti)) ++ "." ++ (T.unpack t)))
+findTTitle ((t, VTArray v) : xs) False ti = ppTArray v (T.pack ((render (hcat ti)) ++ "." ++ (T.unpack t))) $$ findTTitle xs False ti
 findTTitle [(t, VTable v)]      b ti =
     findTTitle (M.toList v) True $ ti ++ [text $ T.unpack t]
 findTTitle ((t, VTable v) : xs) b ti =
