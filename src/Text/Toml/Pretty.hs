@@ -2,8 +2,8 @@
 -- -----------------------------------------------------------------
 -- |
 -- Module    : Text.Toml.Pretty
--- Authors   : Johan Backman <johback@student.chalmers.se>
---             Hampus Ramström <hampusr@student.chalmers.se>
+-- Authors   : Johan Backman      <johback@student.chalmers.se>
+--             Hampus Ramström    <hampusr@student.chalmers.se>
 --
 -- Display TOML values using pretty printing combinators.
 -- -----------------------------------------------------------------
@@ -17,8 +17,7 @@ import Text.Toml.Types
 import Text.PrettyPrint.HughesPJ
 
 import qualified Data.HashMap.Strict as M
-import           Data.Vector         as V
-import           Data.Text           (Text)
+import qualified Data.Vector         as V
 import           Data.Time.Clock     (UTCTime)
 import           Data.Time.Format    (formatTime, defaultTimeLocale)
 import qualified Data.Text           as T
@@ -35,19 +34,19 @@ ppNode n = case n of
     (VArray v)    -> ppArray v
 
 ppTomlString :: T.Text -> Doc
-ppTomlString str = doubleQuotes $ hcat $ Prelude.map ppChar (T.unpack str)
+ppTomlString str = doubleQuotes $ hcat $ map ppChar (T.unpack str)
     where ppChar '\\' = text "\\\\"
           ppChar '\"' = text "\\\""
           ppChar c    = char c
 
-ppInteger :: Integer -> Doc
-ppInteger = integer
-
 ppDateTime :: UTCTime -> Doc
-ppDateTime t = hcat $ Prelude.map ppDate (show f_date)
+ppDateTime t = hcat $ map ppDate (show f_date)
     where f_date      = formatTime defaultTimeLocale "%FT%TZ" t
           ppDate '\"' = text ""
           ppDate c    = char c
+
+ppInteger :: Integer -> Doc
+ppInteger = integer
 
 ppFloat :: Double -> Doc
 ppFloat = double
@@ -57,15 +56,15 @@ ppBoolean True = text "true"
 ppBoolean False = text "false"
 
 -- Unclear with fsep, vcat
-ppArray :: Vector Node -> Doc
-ppArray va = brackets $ fsep $ punctuate comma $ Prelude.map ppNode (V.toList va)
+ppArray :: V.Vector Node -> Doc
+ppArray va = brackets $ fsep $ punctuate comma $ map ppNode (V.toList va)
 
 ppTable :: Table -> Doc
 ppTable t = vcat $ tableToList $ M.toList t
 
-tableToList :: [(Text,Node)] -> [Doc]
-tableToList = Prelude.map (fsep . f)
-    where f (x,y) = punctuate equals [text $ T.unpack x,ppNode y]
+tableToList :: [(T.Text, Node)] -> [Doc]
+tableToList = map (fsep . f)
+    where f (x, y) = punctuate equals [text $ T.unpack x,ppNode y]
 
-ppTArray :: Vector Table -> Doc
-ppTArray vt = brackets $ fsep $ punctuate comma $ Prelude.map ppTable (V.toList vt)
+ppTArray :: V.Vector Table -> Doc
+ppTArray vt = brackets $ fsep $ punctuate comma $ map ppTable (V.toList vt)
