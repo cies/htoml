@@ -59,25 +59,29 @@ ppArray :: V.Vector Node -> Doc
 ppArray va = brackets $ fsep $ punctuate comma $ map ppNode (V.toList va)
 
 ppTable :: Table -> Doc
-ppTable tb = findTTitle (M.toList tb) [text ""]
-    where
-        findTTitle []                    ti = brackets $ hcat ti
-        -- findTTitle ((t, VTArray v) : xs) ti = brackets (brackets $ text $ T.unpack t) $$ (hcat $ map (\x -> findTTitle x [text $ T.unpack t]) (map M.toList $ V.toList v)) $$ findTTitle xs [text $ T.unpack t]
-        findTTitle ((t, VTArray v) : xs) ti = ppTArray v t
-        findTTitle [(t, VTable v)]       ti =
-            findTTitle (M.toList v) $ ti ++ [text $ T.unpack t]
-        findTTitle ((t, VTable v) : xs)  ti =
-            (findTTitle (M.toList v) $ ti ++ [text $ T.unpack t]) $$ findTTitle xs ti
-        findTTitle v                    [_] = vcat (tableToList v)
-        findTTitle v                     ti =
-            (brackets (hcat $ punctuate (char '.') (tail ti))) $$ vcat (tableToList v)
+ppTable tb = findTTitle (M.toList tb) True [text ""]
+
+findTTitle :: [(T.Text, Node)] -> Bool -> [Doc] -> Doc
+findTTitle []                   b ti = brackets $ hcat ti
+-- findTTitle ((t, VTArray v) : xs) ti = brackets (brackets $ text $ T.unpack t) $$ (hcat $ map (\x -> findTTitle x [text $ T.unpack t]) (map M.toList $ V.toList v)) $$ findTTitle xs [text $ T.unpack t]
+findTTitle ((t, VTArray v) : xs) True ti = ppTArray v t -- $$ findTTitle xs True ti
+findTTitle ((t, VTArray v) : xs) False ti = ppTArray v (T.pack ((render (hcat ti)) ++ "." ++ (T.unpack t))) -- $$ findTTitle xs False ti
+findTTitle [(t, VTable v)]      b ti =
+    findTTitle (M.toList v) True $ ti ++ [text $ T.unpack t]
+findTTitle ((t, VTable v) : xs) b ti =
+    (findTTitle (M.toList v) True $ ti ++ [text $ T.unpack t]) $$ findTTitle xs b ti
+findTTitle (v:[])              False  ti = (vcat (tableToList [v]))
+findTTitle (v:xs)              False  ti = (vcat (tableToList [v])) $$ findTTitle xs False ti 
+findTTitle v                   b [_] = vcat (tableToList v)
+findTTitle v                   b  ti =
+    (brackets (hcat $ punctuate (char '.') (tail ti))) $$ vcat (tableToList v)
 
 tableToList :: [(T.Text, Node)] -> [Doc]
 tableToList = map (fsep . f)
     where f (x, y) = punctuate (space <> equals) [text $ T.unpack x, ppNode y]
 
 ppTArray :: V.Vector Table -> T.Text -> Doc
-ppTArray v t = vcat $ map (\x -> doubleBracket pt $$ ppTable x) (V.toList v)
+ppTArray v t = vcat $ map (\x -> doubleBracket pt $$ findTTitle x False [pt]) (map M.toList (V.toList v))
     where pt              = text $ T.unpack t
           doubleBracket x = brackets $ brackets x
 
