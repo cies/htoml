@@ -52,7 +52,7 @@ ppFloat :: Double -> Doc
 ppFloat = double
 
 ppBoolean :: Bool -> Doc
-ppBoolean True = text "true"
+ppBoolean True  = text "true"
 ppBoolean False = text "false"
 
 -- Unclear with fsep, vcat
@@ -64,7 +64,7 @@ ppTable t = vcat $ tableToList $ M.toList t
 
 tableToList :: [(T.Text, Node)] -> [Doc]
 tableToList = map (fsep . f)
-    where f (x, y) = punctuate equals [text $ T.unpack x,ppNode y]
+    where f (x, y) = punctuate equals [text $ T.unpack x, ppNode y]
 
 ppTArray :: V.Vector Table -> Doc
 ppTArray vt = brackets $ fsep $ punctuate comma $ map ppTable (V.toList vt)
