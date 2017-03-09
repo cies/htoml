@@ -44,8 +44,10 @@ ppInteger :: Integer -> Doc
 ppInteger = integer
 
 ppDateTime :: UTCTime -> Doc
-ppDateTime t = text $ show f_date
-    where f_date = formatTime defaultTimeLocale "%FT%TZ" t
+ppDateTime t = hcat $ Prelude.map ppDate (show f_date)
+    where f_date      = formatTime defaultTimeLocale "%FT%TZ" t
+          ppDate '\"' = text ""
+          ppDate c    = char c
 
 ppFloat :: Double -> Doc
 ppFloat = double
