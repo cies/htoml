@@ -61,9 +61,14 @@ ppArray va = brackets $ fsep $ punctuate comma $ Prelude.map ppNode (V.toList va
 ppTable :: Table -> Doc
 ppTable t = vcat $ tableToList $ M.toList t
 
-tableToList :: [(Text,Node)] -> [Doc]
+{-tableToList :: [(Text,Node)] -> Doc
+tableToList (x:xs) = (title x) $$ (vcat $ (Prelude.map (fsep . f) xs))
+    where f (x,y) = punctuate (space <> equals) [text $ T.unpack x,ppNode y]
+          title (x,_) = brackets $ text $ T.unpack x-}
+
+tableToList :: [(T.Text, Node)] -> [Doc]
 tableToList = Prelude.map (fsep . f)
-    where f (x,y) = punctuate equals [text $ T.unpack x,ppNode y]
+    where f (x, y) = punctuate (space <> equals) [text $ T.unpack x,ppNode y]
 
 ppTArray :: Vector Table -> Doc
 ppTArray vt = brackets $ fsep $ punctuate comma $ Prelude.map ppTable (V.toList vt)
