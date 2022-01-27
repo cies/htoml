@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -19,6 +20,9 @@ import           Text.Parsec
 import           Data.Aeson.Types
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as M
+#if MIN_VERSION_aeson(2,0,0)
+import qualified Data.Aeson.KeyMap   as KM
+#endif
 import           Data.Int            (Int64)
 import           Data.List           (intersect)
 import           Data.Set (Set)
@@ -190,8 +194,19 @@ instance (ToBsJSON a) => ToBsJSON (Vector a) where
 
 -- | Provide a 'toBsJSON' instance to the 'NTable'.
 instance (ToBsJSON v) => ToBsJSON (M.HashMap Text v) where
+#if MIN_VERSION_aeson(2,0,0)
+  toBsJSON = Object . KM.fromHashMapText . M.map toBsJSON
+#else
   toBsJSON = Object . M.map toBsJSON
+#endif
   {-# INLINE toBsJSON #-}
+
+-- | 'ToBsJSON' instance for 'KeyMap'.
+#if MIN_VERSION_aeson(2,0,0)
+instance (ToBsJSON v) => ToBsJSON (KM.KeyMap v) where
+  toBsJSON = Object . KM.map toBsJSON
+  {-# INLINE toBsJSON #-}
+#endif
 
 -- | 'ToBsJSON' instances for the 'TValue' type that produce Aeson (JSON)
 -- in line with BurntSushi's language agnostic TOML test suite.
